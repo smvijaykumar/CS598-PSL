@@ -17,58 +17,139 @@ library(class)
 library(ggplot2)
 ```
 
-### Introduction
+## Introduction
+
 
 ### Intialization
 
 ```{r}
 set.seed(8742)
-csize = 10; # number of centers
+centers = 10; # number of centers
 p = 2;      
-s = 1;  # sd for generating the centers within each class
-m1 = matrix(rnorm(csize*p), csize, p)*s + cbind( rep(1,csize), rep(0,csize));
-m0 = matrix(rnorm(csize*p), csize, p)*s + cbind( rep(0,csize), rep(1,csize));
+sd = 1;  # sd for generating the centers within each class
+m1 = matrix(rnorm(centers*p), centers, p)*sd + cbind( rep(1,centers), rep(0,centers));
+m0 = matrix(rnorm(centers*p), centers, p)*sd + cbind( rep(0,centers), rep(1,centers));
+
 ```
 
+```{r}
+generate_sim_data= function(centers = 10, n = 100, p = 2, sd = 1 ) {
+  # Randomly allocate the n samples for class 1  to the 10 clusters
+  id1 = sample(1:centers, n, replace = TRUE);
+  # Randomly allocate the n samples for class 1 to the 10 clusters
+  id0 = sample(1:centers, n, replace = TRUE);  
+  matrix(rnorm(2*n*p), 2*n, p)*sd + rbind(m1[id1,], m0[id0,])
+}
+```
 
 ### Generate Train Data
 ```{r}
 n = 100
-# Randomly allocate the n samples for class 1  to the 10 clusters
-id1 = sample(1:csize, n, replace = TRUE);
-# Randomly allocate the n samples for class 1 to the 10 clusters
-id0 = sample(1:csize, n, replace = TRUE);  
-#s= sqrt(1/5);   # sd for generating x. 
-traindata = matrix(rnorm(2*n*p), 2*n, p)*s + rbind(m1[id1,], m0[id0,])
-Ytrain = factor(c(rep(1,n), rep(0,n)))
-head(Ytrain)
+train_data = generate_sim_data()
+cl_train = factor(c(rep(1,n), rep(0,n)))
+train_df = data.frame(train_data)
+train_df$y = c(c(rep(1,n), rep(0,n)))
+colnames(train_df) = c("x1","x2","y")
 ```
 
 ### Generate Test Data
 ```{r}
 N = 5000
-id1 = sample(1:csize, N, replace=TRUE);
-id0 = sample(1:csize, N, replace=TRUE); 
-testdata = matrix(rnorm(2*N*p), 2*N, p)*s + 
-  rbind(m1[id1,], m0[id0,])
-Ytest = factor(c(rep(1,N), rep(0,N)))
-head(Ytest)
+test_data = generate_sim_data(n = N)
+cl_test = factor(c(rep(1,N), rep(0,N)))
+test_df = data.frame(test_data)
+test_df$y = cl_test
+colnames(test_df) = c("x1","x2","y")
 ```
 
 ### Visualization
 
-### Method
+```{r}
+par(mfrow = c(1,2))
+plot(x2 ~ x1, col = cl_train, data = train_df,
+     ylim = c(0, 5), xlim = c(0, 5), pch = 20, cex = 1.5)
+plot(x2 ~ x1, col = cl_test, data = test_df,
+     ylim = c(0, 6), xlim = c(0, 6), pch = 20, cex = 1.5)
+qqplot(train_df$x1,train_df$x2,plot.it = TRUE)
+```
 
-#### 1) Classification based on linear regression
+## Method
 
-#### 2) Classification based on quadratic regression
+### 1) Classification based on linear regression
 
-#### 3) KNN Classification with K chosen by 10 fold CV
+```{r}
+lm_fit = lm(y ~ ., data = train_df)
+lm_pred_cl_train = as.numeric(lm_fit$fitted > 0.5)
+paste("Train Error with Linear Regression Model:",mean(train_df$y != lm_pred_cl_train))
+paste("Test Error with Linear Regression Model:",round(mean(ifelse(predict(lm_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
+```
 
-#### 4) Classification based on Bayes Rules
 
-### Results
+### 2) Classification based on quadratic regression
+```{r}
+quad_fit = lm(y ~ poly( x1, degree = 2, raw =TRUE) + poly(x2, degree = 2, raw = TRUE), data = train_df)
+lm_pred_cl_train = as.numeric(quad_fit$fitted > 0.5)
+paste("Train Error with Quadratic Model:",mean(train_df$y != lm_pred_cl_train))
+paste("Test Error with Quadratic Model:",round(mean(ifelse(predict(quad_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
+```
 
-### Discussion
+### 3) KNN Classification with K chosen by 10 fold CV
+```{r}
+set.seed(8742)
+dataSet = rbind(train_df,test_df)
+dataSet = dataSet[sample(nrow(train_df)),]
+foldNum = 10
+cvKNNAveErrorRate=function(K,dataSet,foldSize,foldNum) {
+  error = 0
+  for (runId in 1:foldNum) {
+      testSetIndex = ((runId - 1) * foldSize + 1):(ifelse(runId == 
+          foldNum, nrow(dataSet), runId * foldSize))
+      trainX = dataSet[-testSetIndex, c("x1", "x2")]
+      trainY = as.factor(dataSet[-testSetIndex, ]$y)
+      testX = dataSet[testSetIndex, c("x1", "x2")]
+      testY = as.factor(dataSet[testSetIndex, ]$y)
+      predictY = knn(trainX, testX, trainY, K)
+      error = error + sum(predictY != testY)
+  }
+  error = error/nrow(dataSet)
+  error
+}
+
+cvKNN = function(dataSet, foldNum) {
+    foldSize = floor(nrow(dataSet)/foldNum)
+    KVector = seq(1, (nrow(dataSet) - foldSize), 2)
+    cvKNNAveErrorRates = sapply(KVector, cvKNNAveErrorRate, dataSet, 
+        foldSize, foldNum)
+    result = list()
+    result$bestK = max(KVector[cvKNNAveErrorRates == min(cvKNNAveErrorRates)])
+    bestK_index = which(KVector %in% c(result$bestK))
+    result$cvError = cvKNNAveErrorRates[bestK_index]
+    result
+}
+
+cvKNN(dataSet,foldNum)
+
+```
+
+### 4) Classification based on Bayes Rules
+
+```{r}
+# bayes error
+mixedModelBayes=function(x){
+  sum(exp(-apply((t(m1)-x)^2, 2, sum)*5/2))/sum(exp(-apply((t(m0)-x)^2, 2, sum)*5/2))
+}
+
+
+cl_test_pred_Bayes = apply(test_data, 1, mixedModelBayes)
+cl_test_pred_Bayes = as.numeric(cl_test_pred_Bayes > 1);
+table(cl_test, cl_test_pred_Bayes); 
+test.err.Bayes = sum(cl_test !=  cl_test_pred_Bayes) / (2*N)
+print(test.err.Bayes)
+```
+
+
+## Results
+
+## Discussion
 
 
