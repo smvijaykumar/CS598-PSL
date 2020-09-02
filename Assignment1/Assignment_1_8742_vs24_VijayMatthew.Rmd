@@ -73,6 +73,20 @@ plot(x2 ~ x1, col = cl_test, data = test_df,
 qqplot(train_df$x1,train_df$x2,plot.it = TRUE)
 ```
 
+```{r}
+plot(train_data[, 1], train_data[, 2], type = "n", xlab = "", ylab = "")
+
+points(train_data[1:n, 1], train_data[1:n, 2], col = "blue");
+points(train_data[(n+1):(2*n), 1], train_data[(n+1):(2*n), 2], col="red"); 
+
+points(m1[1:10, 1], m1[1:10, 2], pch="+", cex=1.5, col="blue");    
+points(m0[1:10, 1], m0[1:10, 2], pch="+", cex=1.5, col="red");   
+
+legend("bottomleft", pch = c(1,1), col = c("red", "blue"), 
+       legend = c("class 1", "class 0"))
+```
+
+
 ## Method
 
 ### 1) Classification based on linear regression
