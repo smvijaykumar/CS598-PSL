@@ -33,7 +33,7 @@ m0 = matrix(rnorm(centers*p), centers, p)*sd + cbind( rep(0,centers), rep(1,cent
 ```
 
 ```{r}
-generate_sim_data= function(centers = 10, n = 100, p = 2, sd = 1 ) {
+generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
   # Randomly allocate the n samples for class 1  to the 10 clusters
   id1 = sample(1:centers, n, replace = TRUE);
   # Randomly allocate the n samples for class 1 to the 10 clusters
@@ -97,15 +97,23 @@ lm_pred_cl_train = as.numeric(lm_fit$fitted > 0.5)
 paste("Train Error with Linear Regression Model:",mean(train_df$y != lm_pred_cl_train))
 paste("Test Error with Linear Regression Model:",round(mean(ifelse(predict(lm_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
 ```
+```{r}
+ggplot(data = train_df, aes(x = x1, y = x2, color = as.factor(y))) + 
+    geom_point() + geom_abline(slope = -lm_fit$coefficients[2]/lm_fit$coefficients[3], 
+    intercept = (0.5 - lm_fit$coefficients[1])/lm_fit$coefficients[3], 
+    size = 1.2)
+```
 
 
 ### 2) Classification based on quadratic regression
 ```{r}
-quad_fit = lm(y ~ poly( x1, degree = 2, raw =TRUE) + poly(x2, degree = 2, raw = TRUE), data = train_df)
+quad_fit = lm(y ~ x1 + x2 + I(x1*x2) + I(x1^2) + I(x2^2), data = train_df)
 lm_pred_cl_train = as.numeric(quad_fit$fitted > 0.5)
 paste("Train Error with Quadratic Model:",mean(train_df$y != lm_pred_cl_train))
 paste("Test Error with Quadratic Model:",round(mean(ifelse(predict(quad_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
 ```
+
+
 
 ### 3) KNN Classification with K chosen by 10 fold CV
 ```{r}
