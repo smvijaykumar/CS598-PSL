@@ -228,6 +228,23 @@ test.err.Bayes = sum(cl_test !=  cl_test_pred_Bayes) / (2*N)
 print(test.err.Bayes)
 ```
 
+```{r}
+
+# create a grid of points to be predicted by bayes rule
+X1 = seq(-5, 5, 0.1)
+X2 = seq(-5, 5, 0.1)
+X = expand.grid(x1 = X1, x2 = X2)
+Y = as.numeric(apply(X, 1, mixedModelBayes) > 1)
+
+# plot the area
+ggplot(data = X ) +
+  geom_point(aes(x = x1, y = x2, color = as.factor(Y)), size = 0.1) +
+  geom_contour(aes(x = x1, y = x2, z = Y), color = "grey32", inherit.aes = FALSE) +
+  geom_point(data = train_df, aes(x = x1, y = x2, color = as.factor(y)), size = 2) +
+  ggtitle("Classification based on the Bayes Rule ")
+
+
+```
 
 ## Results
 
