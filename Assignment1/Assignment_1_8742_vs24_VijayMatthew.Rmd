@@ -22,6 +22,27 @@ library(ggplot2)
 
 ### Intialization
 
+
+```{r}
+# fill the following result during 20 simulation run
+linearTestErr = data.frame(method = rep("linear",20), set = rep("test", 20), errorRate = rep(0, 20)  )
+linearTrainErr = data.frame(method = rep("linear",20), set = rep("train", 20), errorRate = rep(0, 20)  )
+
+quadTestErr = data.frame(method = rep("quadratic",20), set = rep("test", 20), errorRate = rep(0, 20)  )
+quadTrainErr = data.frame(method = rep("quadratic",20), set = rep("train", 20), errorRate = rep(0, 20)  )
+
+knnTestErr = data.frame(method = rep("KNN",20), set = rep("test", 20), errorRate = rep(0, 20)  )
+knnTrainErr = data.frame(method = rep("KNN",20), set = rep("train", 20), errorRate = rep(0, 20)  )
+
+bayesTestErr = data.frame(method = rep("bayesRule",20), set = rep("test", 20), errorRate = rep(0, 20)  )
+bayesTrainErr = data.frame(method = rep("bayesRule",20), set = rep("train", 20), errorRate = rep(0, 20)  )
+
+KNNCvBestK = rep(0, 20)
+
+```
+
+
+
 ```{r}
 set.seed(8742)
 centers = 10; # number of centers
@@ -113,6 +134,17 @@ paste("Train Error with Quadratic Model:",mean(train_df$y != lm_pred_cl_train))
 paste("Test Error with Quadratic Model:",round(mean(ifelse(predict(quad_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
 ```
 
+```{r}
+quad_f = function(x1,x2) {quad_fit$coefficients[1] + quad_fit$coefficients[2] * x1 + quad_fit$coefficients[2] * x2 + quad_fit$coefficients[3] * x1 * x2 + quad_fit$coefficients[4] * x1^2 + quad_fit$coefficients[2] * x2^2 - 0.5}
+
+X1 = seq(-2.5, 3, length = 100)
+X2 = seq(-1.5, 4, length = 100)
+Z = outer(X1, X2, quad_f)
+
+#ggplot(data = train_df, aes(x = x1, y = x2, color = as.factor(y))) + 
+#    geom_point() + geom_contour(aes(x = X1, y = X2, z = Z), color = "grey32", #inherit.aes = FALSE)
+
+```
 
 
 ### 3) KNN Classification with K chosen by 10 fold CV
@@ -172,6 +204,54 @@ print(test.err.Bayes)
 
 ## Results
 
+```{r}
+
+# consolidate all results
+finalErr = rbind(linearTestErr, linearTrainErr, quadTestErr, quadTrainErr, knnTestErr, knnTrainErr, bayesTestErr, bayesTrainErr)
+
+# randomly assign some error for visualization testing
+# comment this out when real data is available
+finalErr$errorRate = runif(nrow(finalErr), min = 0.01, max = 0.9)
+
+# plot boxplot
+ggplot(finalErr, aes(x = method, y = errorRate, fill = set)) +
+  geom_boxplot() +
+  ggtitle("Repeat simulation 20 times and compare the performance for all methods ")
+```
+
+```{r}
+
+# randomly assign best K for visualization testing
+# comment this out when real data is available
+KNNCvBestK = floor(runif(length(KNNCvBestK), min = 1, max = 100))
+
+bestK_df = data.frame(simulation = seq(1,20,1), K = KNNCvBestK)
+
+# plot barplot for 20 best K
+ggplot(bestK_df, aes(x = simulation, y = K)) +
+  geom_bar(stat = "identity") +
+  ggtitle("best K selected by 10 fold cross validation for KNN ")
+
+
+
+```
+
+
+Report the mean and sd of selected K values
+
+```{r}
+mean(KNNCvBestK)
+
+```
+
+
+```{r}
+sd(KNNCvBestK)
+```
+
+
+
 ## Discussion
+
 
 
