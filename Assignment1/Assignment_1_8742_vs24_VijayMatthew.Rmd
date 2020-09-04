@@ -135,14 +135,20 @@ paste("Test Error with Quadratic Model:",round(mean(ifelse(predict(quad_fit, new
 ```
 
 ```{r}
-quad_f = function(x1,x2) {quad_fit$coefficients[1] + quad_fit$coefficients[2] * x1 + quad_fit$coefficients[2] * x2 + quad_fit$coefficients[3] * x1 * x2 + quad_fit$coefficients[4] * x1^2 + quad_fit$coefficients[2] * x2^2 - 0.5}
+# create a grid of points to be predicted by quad regression
+X1 = seq(-5, 5, 0.1)
+X2 = seq(-5, 5, 0.1)
+X = expand.grid(x1 = X1, x2 = X2)
+Y = ifelse(predict(quad_fit, newdata = X) > 0.5, 1, 0)
 
-X1 = seq(-2.5, 3, length = 100)
-X2 = seq(-1.5, 4, length = 100)
-Z = outer(X1, X2, quad_f)
+# plot the area
+ggplot(data = X ) +
+  geom_point(aes(x = x1, y = x2, color = as.factor(Y)), size = 0.1) +
+  geom_contour(aes(x = x1, y = x2, z = Y), color = "grey32", inherit.aes = FALSE) +
+  geom_point(data = train_df, aes(x = x1, y = x2, color = as.factor(y)), size = 2) +
+  ggtitle("Quadratic Regression ")
+  
 
-#ggplot(data = train_df, aes(x = x1, y = x2, color = as.factor(y))) + 
-#    geom_point() + geom_contour(aes(x = X1, y = X2, z = Z), color = "grey32", #inherit.aes = FALSE)
 
 ```
 
@@ -184,6 +190,27 @@ cvKNN = function(dataSet, foldNum) {
 cvKNN(dataSet,foldNum)
 
 ```
+
+```{r}
+# create a grid of points to be predicted by KNN
+X1 = seq(-5, 5, 0.1)
+X2 = seq(-5, 5, 0.1)
+X = expand.grid(x1 = X1, x2 = X2)
+Y = knn(train_df[, c("x1", "x2")], X, train_df[, c("y")] , 13) 
+
+# plot the area
+ggplot(data = X ) +
+  geom_point(aes(x = x1, y = x2, color = as.factor(Y)), size = 0.1) +
+  geom_contour(aes(x = x1, y = x2, z = Y), color = "grey32", inherit.aes = FALSE) +
+  geom_point(data = train_df, aes(x = x1, y = x2, color = as.factor(y)), size = 2) +
+  ggtitle("KNN with K = 13 ")
+  
+
+
+
+```
+
+
 
 ### 4) Classification based on Bayes Rules
 
