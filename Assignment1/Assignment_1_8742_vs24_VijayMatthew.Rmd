@@ -26,36 +26,36 @@ library(ggplot2)
 
 ```{r}
 # fill the following result during 20 simulation run
-linearTestErr = data.frame(method = rep("linear",20), set = rep("test", 20), errorRate = rep(0, 20)  )
-linearTrainErr = data.frame(method = rep("linear",20), set = rep("train", 20), errorRate = rep(0, 20)  )
+linearTestErr = data.frame(method = rep("linear",20), set = rep("test", 20), errorRate = rep(0.0, 20)  )
+linearTrainErr = data.frame(method = rep("linear",20), set = rep("train", 20), errorRate = rep(0.0, 20)  )
 
-quadTestErr = data.frame(method = rep("quadratic",20), set = rep("test", 20), errorRate = rep(0, 20)  )
-quadTrainErr = data.frame(method = rep("quadratic",20), set = rep("train", 20), errorRate = rep(0, 20)  )
+quadTestErr = data.frame(method = rep("quadratic",20), set = rep("test", 20), errorRate = rep(0.0, 20)  )
+quadTrainErr = data.frame(method = rep("quadratic",20), set = rep("train", 20), errorRate = rep(0.0, 20)  )
 
-knnTestErr = data.frame(method = rep("KNN",20), set = rep("test", 20), errorRate = rep(0, 20) )
-knnTrainErr = data.frame(method = rep("KNN",20), set = rep("train", 20), errorRate = rep(0, 20)  )
+knnTestErr = data.frame(method = rep("KNN",20), set = rep("test", 20), errorRate = rep(0.0, 20) )
+knnTrainErr = data.frame(method = rep("KNN",20), set = rep("train", 20), errorRate = rep(0.0, 20)  )
 
-bayesTestErr = data.frame(method = rep("bayesRule",20), set = rep("test", 20), errorRate = rep(0, 20)  )
-bayesTrainErr = data.frame(method = rep("bayesRule",20), set = rep("train", 20), errorRate = rep(0, 20)  )
-
+bayesTestErr = data.frame(method = rep("bayesRule",20), set = rep("test", 20), errorRate = rep(0.0, 20)  )
+bayesTrainErr = data.frame(method = rep("bayesRule",20), set = rep("train", 20), errorRate = rep(0., 20)  )
 KNNCvBestK = rep(0, 20)
-
 ```
-
-
 
 ```{r}
-set.seed(8742)
-centers = 10; # number of centers
-p = 2;      
-sd = 1;  # sd for generating the centers within each class
-m1 = matrix(rnorm(centers*p), centers, p)*sd + cbind( rep(1,centers), rep(0,centers));
-m0 = matrix(rnorm(centers*p), centers, p)*sd + cbind( rep(0,centers), rep(1,centers));
-
+generateCenters = function() {
+  set.seed(8742)
+  centers = 10; # number of centers
+  p = 2;    
+  sd = 1;  # sd for generating the centers within each class
+  m1 = matrix(rnorm(centers*p), centers, p)*sd + cbind( rep(1,centers), rep(0,centers));
+  m0 = matrix(rnorm(centers*p), centers, p)*sd + cbind( rep(0,centers), rep(1,centers));
+  list(m0,m1)
+}
 ```
+
 
 ```{r}
 generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
+ 
   # Randomly allocate the n samples for class 1  to the 10 clusters
   id1 = sample(1:centers, n, replace = TRUE);
   # Randomly allocate the n samples for class 1 to the 10 clusters
@@ -64,42 +64,46 @@ generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
 }
 ```
 
-### Generate Train Data
 ```{r}
-n = 100
-train_data = generate_sim_data()
-cl_train = factor(c(rep(1,n), rep(0,n)))
-train_df = data.frame(train_data)
-train_df$y = c(c(rep(1,n), rep(0,n)))
-colnames(train_df) = c("x1","x2","y")
-```
-
-### Generate Test Data
-```{r}
-N = 5000
-test_data = generate_sim_data(n = N)
-cl_test = factor(c(rep(1,N), rep(0,N)))
-test_df = data.frame(test_data)
-test_df$y = cl_test
-colnames(test_df) = c("x1","x2","y")
+generateTrainAndTestData = function(train = 100, test = 5000) {
+  train_data = generate_sim_data()
+  train_df = data.frame(train_data)
+  train_df$y = c(c(rep(1,train), rep(0,train)))
+  colnames(train_df) = c("x1","x2","y")
+  
+  test_data = generate_sim_data(n = test)
+  test_df = data.frame(test_data)
+  test_df$y = c(rep(1,test), rep(0,test))
+  colnames(test_df) = c("x1","x2","y")
+  list(train_data = train_df, test_data = test_df)
+}
 ```
 
 ### Visualization
 
 ```{r}
-par(mfrow = c(1,2))
-plot(x2 ~ x1, col = cl_train, data = train_df,
-     ylim = c(0, 5), xlim = c(0, 5), pch = 20, cex = 1.5)
-plot(x2 ~ x1, col = cl_test, data = test_df,
-     ylim = c(0, 6), xlim = c(0, 6), pch = 20, cex = 1.5)
-qqplot(train_df$x1,train_df$x2,plot.it = TRUE)
+centers = generateCenters()
+m0 = centers[[1]]
+m1 = centers[[2]]
+sim_data = generateTrainAndTestData()
+train_df = sim_data$train_data
+test_df = sim_data$test_data
+
 ```
 
 ```{r}
-plot(train_data[, 1], train_data[, 2], type = "n", xlab = "", ylab = "")
+par(mfrow = c(1,2))
+plot(x2 ~ x1, col = y, data = train_df,
+     ylim = c(0, 5), xlim = c(0, 5), pch = 20, cex = 1.5)
+plot(x2 ~ x1, col = y, data = test_df,
+     ylim = c(0, 6), xlim = c(0, 6), pch = 20, cex = 1.5)
+```
 
-points(train_data[1:n, 1], train_data[1:n, 2], col = "blue");
-points(train_data[(n+1):(2*n), 1], train_data[(n+1):(2*n), 2], col="red"); 
+```{r}
+plot(train_df$x1, train_df$x2, type = "n", xlab = "", ylab = "")
+
+points(train_df[train_df$y == 1,1], train_df[train_df$y == 1,2], col = "blue");
+points(train_df[train_df$y == 0,1], train_df[train_df$y == 0,2], col = "red"); 
 
 points(m1[1:10, 1], m1[1:10, 2], pch="+", cex=1.5, col="blue");    
 points(m0[1:10, 1], m0[1:10, 2], pch="+", cex=1.5, col="red");   
@@ -117,10 +121,9 @@ legend("bottomleft", pch = c(1,1), col = c("red", "blue"),
 simpleLinearRegression = function(index) {
   lm_fit = lm(y ~ ., data = train_df)
   lm_pred_cl_train = as.numeric(lm_fit$fitted > 0.5)
-  linearTrainErr[index,"errorRate"] = mean(train_df$y != lm_pred_cl_train)
-  linearTestErr[index,"errorRate"] = round(mean(ifelse(predict(lm_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4)
+  c(train_error = mean(train_df$y != lm_pred_cl_train),
+  test_error = round(mean(ifelse(predict(lm_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
 }
-
 ```
 
 ```{r}
@@ -140,8 +143,8 @@ linearPlot = function (lm_fit) {
 quadraticRegression = function(index) {
   quad_fit = lm(y ~ x1 + x2 + I(x1*x2) + I(x1^2) + I(x2^2), data = train_df)
   lm_pred_cl_train = as.numeric(quad_fit$fitted > 0.5)
-  quadTrainErr[index,"errorRate"] = mean(train_df$y != lm_pred_cl_train)
-  quadTestErr[index,"errorRate"] = round(mean(ifelse(predict(quad_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4)
+  c(train_error = mean(train_df$y != lm_pred_cl_train),
+  test_error  = round(mean(ifelse(predict(quad_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
 }
 ```
 
@@ -199,22 +202,18 @@ cvKNN = function(dataSet, foldNum) {
     bestK_index = which(KVector %in% c(result$bestK))
     result$train.cvError = cvKNNAveErrorRates[bestK_index]
 
-    predictY = knn(train_df, test_df, cl_train, k = result$bestK)
-    error = sum(predictY != cl_test) / nrow(test_df)
+    predictY = knn(train_df, test_df, train_df$y, k = result$bestK)
+    error = sum(predictY != test_df$y) / nrow(test_df)
     result$cvError = error
     result
 }
 
 foldNum = 10
 kNearestNeighbor = function(index) {
-
   dataSet = train_df[sample(nrow(train_df)),]
   result = cvKNN(dataSet,foldNum)
-  knnTestErr[index,"errorRate"] = result$cvError
-  knnTrainErr[index,"errorRate"] = result$train.cvError
-  KNNCvBestK[index] = (result$bestK)
+  c(result$train.cvError,result$cvError,result$bestK)
 }
-
 ```
 
 ```{r}
@@ -250,15 +249,14 @@ mixedModelBayes=function(x){
 }
 
 bayesError = function(index) {
-  cl_train_pred_Bayes = apply(train_data, 1, mixedModelBayes)
+  cl_train_pred_Bayes = apply(train_df[,1:2], 1, mixedModelBayes)
   cl_train_pred_Bayes = as.numeric(cl_train_pred_Bayes > 1);
-  train.err.Bayes = sum(cl_train !=  cl_train_pred_Bayes) / (2*nrow(train_data))
-  bayesTrainErr[index,"errorRate"] = train.err.Bayes
+  train.err.Bayes = sum(train_df$y !=  cl_train_pred_Bayes) / nrow(train_df)
 
-  cl_test_pred_Bayes = apply(test_data, 1, mixedModelBayes)
+  cl_test_pred_Bayes = apply(test_df[,1:2], 1, mixedModelBayes)
   cl_test_pred_Bayes = as.numeric(cl_test_pred_Bayes > 1);
-  test.err.Bayes = sum(cl_test !=  cl_test_pred_Bayes) / (2*N)
-  bayesTestErr[index,"errorRate"] = test.err.Bayes
+  test.err.Bayes = sum(test_df$y !=  cl_test_pred_Bayes) / nrow(test_df)
+  c(train.err.Bayes,test.err.Bayes)
 }
 ```
 
@@ -285,16 +283,30 @@ bayesPlot = function() {
 ## Results
 
 ```{r message=FALSE, warning=FALSE}
-simSize = 20;
+simSize = 20
+
 for(i in 1:simSize) {
-  simpleLinearRegression(i)
-  quadraticRegression(i)
-  kNearestNeighbor(i)
-  bayesError(i)
+  sim_data = generateTrainAndTestData()
+  train_df = sim_data$train_data
+  test_df = sim_data$test_data
+  lr_errors = simpleLinearRegression(i)
+  linearTrainErr[i,"errorRate"] = lr_errors[1]
+  linearTestErr[i,"errorRate"] = lr_errors[2]
+  quad_errors = quadraticRegression(i)
+  quadTrainErr[i,"errorRate"] = quad_errors[1]
+  quadTestErr[i,"errorRate"] = quad_errors[2]
+  knn_errors = kNearestNeighbor(i)
+  knnTrainErr[i,"errorRate"] = knn_errors[1]
+  knnTestErr[i,"errorRate"] = knn_errors[2]
+  KNNCvBestK[i] = knn_errors[3]
+  bayes_errors = bayesError(i)
+  bayesTrainErr[i,"errorRate"] = bayes_errors[1]
+  bayesTestErr[i,"errorRate"] = bayes_errors[2]
 }
 
 # consolidate all results
 finalErr = rbind(linearTestErr, linearTrainErr, quadTestErr, quadTrainErr, knnTestErr, knnTrainErr, bayesTestErr, bayesTrainErr)
+
 
 # randomly assign some error for visualization testing
 # comment this out when real data is available
@@ -310,7 +322,7 @@ ggplot(finalErr, aes(x = method, y = errorRate, fill = set)) +
 
 # randomly assign best K for visualization testing
 # comment this out when real data is available
-KNNCvBestK = floor(runif(length(KNNCvBestK), min = 1, max = 100))
+#KNNCvBestK = floor(runif(length(KNNCvBestK), min = 1, max = 100))
 
 bestK_df = data.frame(simulation = seq(1,20,1), K = KNNCvBestK)
 
