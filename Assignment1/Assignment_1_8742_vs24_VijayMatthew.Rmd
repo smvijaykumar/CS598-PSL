@@ -38,11 +38,11 @@ knnTrainErr = data.frame(method = rep("KNN",20), set = rep("train", 20), errorRa
 bayesTestErr = data.frame(method = rep("bayesRule",20), set = rep("test", 20), errorRate = rep(0.0, 20)  )
 bayesTrainErr = data.frame(method = rep("bayesRule",20), set = rep("train", 20), errorRate = rep(0., 20)  )
 KNNCvBestK = rep(0, 20)
+set.seed(8742)
 ```
 
 ```{r}
 generateCenters = function() {
-  set.seed(8742)
   centers = 10; # number of centers
   p = 2;    
   sd = 1;  # sd for generating the centers within each class
@@ -55,7 +55,10 @@ generateCenters = function() {
 
 ```{r}
 generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
- 
+
+  centers_mat = generateCenters()
+  m0 = centers_mat[[1]]
+  m1 = centers_mat[[2]]
   # Randomly allocate the n samples for class 1  to the 10 clusters
   id1 = sample(1:centers, n, replace = TRUE);
   # Randomly allocate the n samples for class 1 to the 10 clusters
@@ -66,6 +69,7 @@ generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
 
 ```{r}
 generateTrainAndTestData = function(train = 100, test = 5000) {
+
   train_data = generate_sim_data()
   train_df = data.frame(train_data)
   train_df$y = c(c(rep(1,train), rep(0,train)))
@@ -82,13 +86,12 @@ generateTrainAndTestData = function(train = 100, test = 5000) {
 ### Visualization
 
 ```{r}
-centers = generateCenters()
-m0 = centers[[1]]
-m1 = centers[[2]]
 sim_data = generateTrainAndTestData()
 train_df = sim_data$train_data
 test_df = sim_data$test_data
-
+centers_mat = generateCenters()
+m0 = centers_mat[[1]]
+m1 = centers_mat[[2]]
 ```
 
 ```{r}
@@ -203,8 +206,7 @@ cvKNN = function(dataSet, foldNum) {
     result$train.cvError = cvKNNAveErrorRates[bestK_index]
 
     predictY = knn(train_df, test_df, train_df$y, k = result$bestK)
-    error = sum(predictY != test_df$y) / nrow(test_df)
-    result$cvError = error
+    result$cvError = sum(predictY != test_df$y) / nrow(test_df)
     result
 }
 
