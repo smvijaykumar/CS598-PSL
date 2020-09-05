@@ -333,24 +333,30 @@ ggplot(bestK_df, aes(x = simulation, y = K)) +
   geom_bar(stat = "identity") +
   ggtitle("best K selected by 10 fold cross validation for KNN ")
 
-
-
 ```
 
+```{r}
+results = rbind(c(min(linearTrainErr$errorRate), min(linearTestErr$errorRate)),
+c(min(quadTrainErr$errorRate), min(quadTestErr$errorRate)),
+c(min(knnTrainErr$errorRate), min(knnTestErr$errorRate)),
+c(min(bayesTrainErr$errorRate), min(bayesTestErr$errorRate)))
+colnames(results) = c("Train Error","Test Error")
+rownames(results) = c("Linear Regression","Quadratic L.Regression","KNN","Bayes Rule")
+results
+```
 
-Report the mean and sd of selected K values
+- The above table shows the training and test errors for four procedures which we analyzed in this study. `KNN` has low test error among the models. 
+
+### Report the mean and sd of selected K values
 
 ```{r}
 mean(KNNCvBestK)
-
 ```
 
 
 ```{r}
 sd(KNNCvBestK)
 ```
-
-
 
 ## Discussion
 
