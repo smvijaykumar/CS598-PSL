@@ -1,7 +1,7 @@
 ---
 title: "PSL (F20) Coding Assignment 1"
-author: "Vijayakumar Sitha Mohan, Matthew Leung"
-date: ''
+author: "Vijayakumar Sitha Mohan (VS24), Waitong Matthew Leung (wmleung2)"
+date: '6-Sept-2020'
 output:
   html_document: 
     theme: readable
@@ -20,6 +20,22 @@ library(ggplot2)
 
 ## Introduction
 
+This assignment is related to the simulation study described in Section 2.3.1 (the so-called Scenario 2) of "Elements of Statistical Learning" (ESL).
+
+Scenario 2: the two-dimensional data X in R2 in each class is generated from a
+mixture of 10 different bivariate Gaussian distributions with uncorrelated components and different means.
+
+The study repeats the following simulation 20 times. In each simulation,
+
+1. follow the data generating process to generate a training sample of size 200 and a test sample of size 10,000, and
+
+2. calculate the training and test errors (the averaged 0/1 error )
+for each the following four procedures:
+
+- Linear regression with cut-off value 0.5,
+- quadratic regression with cut-off value 0.5,
+- kNN classification with k chosen by 10-fold cross-validation, and
+- the Bayes rule (assume your know the values of mkl's and s).
 
 ### Intialization
 
@@ -95,11 +111,11 @@ m1 = centers_mat[[2]]
 ```
 
 ```{r}
-par(mfrow = c(1,2))
-plot(x2 ~ x1, col = y, data = train_df,
-     ylim = c(0, 5), xlim = c(0, 5), pch = 20, cex = 1.5)
-plot(x2 ~ x1, col = y, data = test_df,
-     ylim = c(0, 6), xlim = c(0, 6), pch = 20, cex = 1.5)
+#par(mfrow = c(1,2))
+#plot(x2 ~ x1, col = y, data = train_df,
+#     ylim = c(0, 5), xlim = c(0, 5), pch = 20, cex = 1.5)
+#plot(x2 ~ x1, col = y, data = test_df,
+#     ylim = c(0, 6), xlim = c(0, 6), pch = 20, cex = 1.5)
 ```
 
 ```{r}
@@ -125,7 +141,7 @@ simpleLinearRegression = function(index) {
   lm_fit = lm(y ~ ., data = train_df)
   lm_pred_cl_train = as.numeric(lm_fit$fitted > 0.5)
   c(train_error = mean(train_df$y != lm_pred_cl_train),
-  test_error = round(mean(ifelse(predict(lm_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
+  test_error = round(mean(ifelse(predict(lm_fit, newdata = test_df) > 0.5, 1, 0) != test_df$y),4))
 }
 ```
 
@@ -136,7 +152,8 @@ linearPlot = function (lm_fit) {
       intercept = (0.5 - lm_fit$coefficients[1])/lm_fit$coefficients[3], 
       size = 1.2) +
     geom_point(data = data.frame(m1), aes(x = X1, y = X2, color = as.factor(1)), shape  = 9, size = 4) + 
-    geom_point(data = data.frame(m0), aes(x = X1, y = X2, color = as.factor(0)), shape  = 9, size = 4)
+    geom_point(data = data.frame(m0), aes(x = X1, y = X2, color = as.factor(0)), shape  = 9, size = 4) +
+    ggtitle("Linear Regression ")
 }
 ```
 
@@ -147,7 +164,7 @@ quadraticRegression = function(index) {
   quad_fit = lm(y ~ x1 + x2 + I(x1*x2) + I(x1^2) + I(x2^2), data = train_df)
   lm_pred_cl_train = as.numeric(quad_fit$fitted > 0.5)
   c(train_error = mean(train_df$y != lm_pred_cl_train),
-  test_error  = round(mean(ifelse(predict(quad_fit, newdata = test_df, interval = "prediction") > 0.5, 1, 0) != test_df$y),4))
+  test_error  = round(mean(ifelse(predict(quad_fit, newdata = test_df) > 0.5, 1, 0) != test_df$y),4))
 }
 ```
 
@@ -203,8 +220,11 @@ cvKNN = function(dataSet, foldNum) {
     result = list()
     result$bestK = max(KVector[cvKNNAveErrorRates == min(cvKNNAveErrorRates)])
     bestK_index = which(KVector %in% c(result$bestK))
-    result$train.cvError = cvKNNAveErrorRates[bestK_index]
-
+    
+    # ML: commented out the following line and call knn with train_df directly to get training error
+    #result$train.cvError = cvKNNAveErrorRates[bestK_index]
+    result$train.cvError = sum(knn(train_df, train_df, train_df$y, k = result$bestK) != train_df$y) / nrow(train_df)
+    
     predictY = knn(train_df, test_df, train_df$y, k = result$bestK)
     result$cvError = sum(predictY != test_df$y) / nrow(test_df)
     result
@@ -219,12 +239,12 @@ kNearestNeighbor = function(index) {
 ```
 
 ```{r}
-knnPlot = function() {
+knnPlot = function(bestK) {
   # create a grid of points to be predicted by KNN
   X1 = seq(-3, 4, 0.1)
   X2 = seq(-3, 4, 0.1)
   X = expand.grid(x1 = X1, x2 = X2)
-  Y = knn(train_df[, c("x1", "x2")], X, train_df[, c("y")] , 13) 
+  Y = knn(train_df[, c("x1", "x2")], X, train_df[, c("y")] , bestK) 
   
   # plot the area
   ggplot(data = X ) +
@@ -233,7 +253,7 @@ knnPlot = function() {
     geom_point(data = train_df, aes(x = x1, y = x2, color = as.factor(y)), size = 2) +
       geom_point(data = data.frame(m1), aes(x = X1, y = X2, color = as.factor(1)), shape  = 9, size = 4) + 
     geom_point(data = data.frame(m0), aes(x = X1, y = X2, color = as.factor(0)), shape  = 9, size = 4) +
-    ggtitle("KNN with K = 13 ")
+    ggtitle(paste("KNN with K = ", bestK))
   
 }
 
@@ -306,13 +326,14 @@ for(i in 1:simSize) {
   bayesTestErr[i,"errorRate"] = bayes_errors[2]
 }
 
+# visualization of 4 methods
+linearPlot( lm(y ~ ., data = train_df) )
+quadraticPlot( lm(y ~ x1 + x2 + I(x1*x2) + I(x1^2) + I(x2^2), data = train_df) )
+knnPlot(22)
+bayesPlot()
+
 # consolidate all results
 finalErr = rbind(linearTestErr, linearTrainErr, quadTestErr, quadTrainErr, knnTestErr, knnTrainErr, bayesTestErr, bayesTrainErr)
-
-
-# randomly assign some error for visualization testing
-# comment this out when real data is available
-#finalErr$errorRate = runif(nrow(finalErr), min = 0.01, max = 0.9)
 
 # plot boxplot
 ggplot(finalErr, aes(x = method, y = errorRate, fill = set)) +
@@ -321,10 +342,6 @@ ggplot(finalErr, aes(x = method, y = errorRate, fill = set)) +
 ```
 
 ```{r}
-
-# randomly assign best K for visualization testing
-# comment this out when real data is available
-#KNNCvBestK = floor(runif(length(KNNCvBestK), min = 1, max = 100))
 
 bestK_df = data.frame(simulation = seq(1,20,1), K = KNNCvBestK)
 
@@ -362,3 +379,8 @@ sd(KNNCvBestK)
 
 
 
+## Contribution
+
+Vijayakumar Mohan contributes to overall factoring programming structure and efficiency to cater to the need of this assignment repeating 4 classification methods for 20 times. 
+
+Matthew Leung contributes to visualization, verification of calculation and overall presentation of the report.
