@@ -293,7 +293,7 @@ bayesPlot = function() {
   # plot the area
   ggplot(data = X ) +
     geom_point(aes(x = x1, y = x2, color = as.factor(Y)), size = 0.1) +
-    geom_contour(aes(x = x1, y = x2, z = Y), color = "grey32", inherit.aes = FALSE) +
+    geom_contour(aes(x = x1, y = x2, z = as.integer(Y)), color = "grey32", inherit.aes = FALSE) +
     geom_point(data = train_df, aes(x = x1, y = x2, color = as.factor(y)), size = 2) +
       geom_point(data = data.frame(m1), aes(x = X1, y = X2, color = as.factor(1)), shape  =9, size = 4) + 
     geom_point(data = data.frame(m0), aes(x = X1, y = X2, color = as.factor(0)), shape  = 9, size = 4) +
@@ -350,30 +350,24 @@ ggplot(bestK_df, aes(x = simulation, y = K)) +
   geom_bar(stat = "identity") +
   ggtitle("best K selected by 10 fold cross validation for KNN ")
 
+
+
 ```
 
-```{r}
-results = rbind(c(min(linearTrainErr$errorRate), min(linearTestErr$errorRate)),
-c(min(quadTrainErr$errorRate), min(quadTestErr$errorRate)),
-c(min(knnTrainErr$errorRate), min(knnTestErr$errorRate)),
-c(min(bayesTrainErr$errorRate), min(bayesTestErr$errorRate)))
-colnames(results) = c("Train Error","Test Error")
-rownames(results) = c("Linear Regression","Quadratic L.Regression","KNN","Bayes Rule")
-results
-```
 
-- The above table shows the training and test errors for four procedures which we analyzed in this study. `KNN` has low test error among the models. 
-
-### Report the mean and sd of selected K values
+Report the mean and sd of selected K values:
 
 ```{r}
 mean(KNNCvBestK)
+
 ```
 
 
 ```{r}
 sd(KNNCvBestK)
 ```
+
+
 
 ## Discussion
 
