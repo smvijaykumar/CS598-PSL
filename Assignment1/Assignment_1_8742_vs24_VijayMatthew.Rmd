@@ -39,6 +39,7 @@ for each the following four procedures:
 
 ### Intialization
 
+- Initialize variables to hold training and test errors for selected 4 procedures.
 
 ```{r}
 # fill the following result during 20 simulation run
@@ -57,6 +58,8 @@ KNNCvBestK = rep(0, 20)
 set.seed(8742)
 ```
 
+- Generate 20 centers randomly
+
 ```{r}
 generateCenters = function() {
   centers = 10; # number of centers
@@ -68,6 +71,7 @@ generateCenters = function() {
 }
 ```
 
+- Function to generate data with a size
 
 ```{r}
 generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
@@ -82,6 +86,8 @@ generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
   matrix(rnorm(2*n*p), 2*n, p)*sd + rbind(m1[id1,], m0[id0,])
 }
 ```
+
+- Generate Training and Testing data
 
 ```{r}
 generateTrainAndTestData = function(train = 100, test = 5000) {
@@ -100,6 +106,8 @@ generateTrainAndTestData = function(train = 100, test = 5000) {
 ```
 
 ### Visualization
+
+- Visualize generated data in a scatter plot
 
 ```{r}
 sim_data = generateTrainAndTestData()
@@ -159,6 +167,7 @@ linearPlot = function (lm_fit) {
 
 
 ### 2) Classification based on quadratic regression
+
 ```{r}
 quadraticRegression = function(index) {
   quad_fit = lm(y ~ x1 + x2 + I(x1*x2) + I(x1^2) + I(x2^2), data = train_df)
@@ -191,10 +200,8 @@ ggplot(data = X ) +
 
 
 ### 3) KNN Classification with K chosen by 10 fold CV
+
 ```{r}
-#set.seed(8742)
-#dataSet = rbind(train_df,test_df)
-#dataSet = dataSet[sample(nrow(train_df)),]
 
 getCvKNNAveErrorRate=function(K,dataSet,foldSize,foldNum) {
   error = 0
@@ -221,8 +228,6 @@ cvKNN = function(dataSet, foldNum) {
     result$bestK = max(KVector[cvKNNAveErrorRates == min(cvKNNAveErrorRates)])
     bestK_index = which(KVector %in% c(result$bestK))
     
-    # ML: commented out the following line and call knn with train_df directly to get training error
-    #result$train.cvError = cvKNNAveErrorRates[bestK_index]
     result$train.cvError = sum(knn(train_df, train_df, train_df$y, k = result$bestK) != train_df$y) / nrow(train_df)
     
     predictY = knn(train_df, test_df, train_df$y, k = result$bestK)
@@ -249,7 +254,7 @@ knnPlot = function(bestK) {
   # plot the area
   ggplot(data = X ) +
     geom_point(aes(x = x1, y = x2, color = as.factor(Y)), size = 0.1) +
-    geom_contour(aes(x = x1, y = x2, z = Y), color = "grey32", inherit.aes = FALSE) +
+    geom_contour(aes(x = x1, y = x2, z = as.integer(Y)), color = "grey32", inherit.aes = FALSE) +
     geom_point(data = train_df, aes(x = x1, y = x2, color = as.factor(y)), size = 2) +
       geom_point(data = data.frame(m1), aes(x = X1, y = X2, color = as.factor(1)), shape  = 9, size = 4) + 
     geom_point(data = data.frame(m0), aes(x = X1, y = X2, color = as.factor(0)), shape  = 9, size = 4) +
@@ -293,7 +298,7 @@ bayesPlot = function() {
   # plot the area
   ggplot(data = X ) +
     geom_point(aes(x = x1, y = x2, color = as.factor(Y)), size = 0.1) +
-    geom_contour(aes(x = x1, y = x2, z = as.integer(Y)), color = "grey32", inherit.aes = FALSE) +
+    geom_contour(aes(x = x1, y = x2, z = Y), color = "grey32", inherit.aes = FALSE) +
     geom_point(data = train_df, aes(x = x1, y = x2, color = as.factor(y)), size = 2) +
       geom_point(data = data.frame(m1), aes(x = X1, y = X2, color = as.factor(1)), shape  =9, size = 4) + 
     geom_point(data = data.frame(m0), aes(x = X1, y = X2, color = as.factor(0)), shape  = 9, size = 4) +
@@ -329,7 +334,7 @@ for(i in 1:simSize) {
 # visualization of 4 methods
 linearPlot( lm(y ~ ., data = train_df) )
 quadraticPlot( lm(y ~ x1 + x2 + I(x1*x2) + I(x1^2) + I(x2^2), data = train_df) )
-knnPlot(22)
+knnPlot(min(KNNCvBestK))
 bayesPlot()
 
 # consolidate all results
