@@ -352,10 +352,8 @@ bestK_df = data.frame(simulation = seq(1,20,1), K = KNNCvBestK)
 
 # plot barplot for 20 best K
 ggplot(bestK_df, aes(x = simulation, y = K)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", fill = rainbow(20)) +
   ggtitle("best K selected by 10 fold cross validation for KNN ")
-
-
 
 ```
 
