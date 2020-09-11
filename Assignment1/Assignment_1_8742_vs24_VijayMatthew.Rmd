@@ -228,9 +228,9 @@ cvKNN = function(dataSet, foldNum) {
     result$bestK = max(KVector[cvKNNAveErrorRates == min(cvKNNAveErrorRates)])
     bestK_index = which(KVector %in% c(result$bestK))
     
-    result$train.cvError = sum(knn(train_df, train_df, train_df$y, k = result$bestK) != train_df$y) / nrow(train_df)
+    result$train.cvError = sum(knn(train_df[,c("x1", "x2")], train_df[,c("x1", "x2")], train_df$y, k = result$bestK) != train_df$y) / nrow(train_df)
     
-    predictY = knn(train_df, test_df, train_df$y, k = result$bestK)
+    predictY = knn(train_df[,c("x1", "x2")], test_df[,c("x1", "x2")], train_df$y, k = result$bestK)
     result$cvError = sum(predictY != test_df$y) / nrow(test_df)
     result
 }
