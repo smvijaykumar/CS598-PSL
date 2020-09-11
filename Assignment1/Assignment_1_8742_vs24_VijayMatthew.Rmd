@@ -334,7 +334,7 @@ for(i in 1:simSize) {
 # visualization of 4 methods
 linearPlot( lm(y ~ ., data = train_df) )
 quadraticPlot( lm(y ~ x1 + x2 + I(x1*x2) + I(x1^2) + I(x2^2), data = train_df) )
-knnPlot(min(KNNCvBestK))
+knnPlot(max(KNNCvBestK))
 bayesPlot()
 
 # consolidate all results
@@ -358,6 +358,29 @@ ggplot(bestK_df, aes(x = simulation, y = K)) +
 ```
 
 
+```{r}
+par(mfrow=c(1,2))
+stripchart(x = list('linear'=linearTrainErr$errorRate,'quad'=quadTrainErr$errorRate,'knn'=knnTrainErr$errorRate,'bayes'=bayesTrainErr$errorRate),
+           main = 'Strip Chart of Train Errors',
+           xlab = 'Model', 
+           ylab = 'ErrorRate',
+           col = c('steelblue', 'coral2', 'purple','darkred'),
+           pch = 16,
+           method = 'jitter',
+           vertical = TRUE)
+
+stripchart(x = list('linear'=linearTestErr$errorRate,'quad'=quadTestErr$errorRate,'knn'=knnTestErr$errorRate,'bayes'=bayesTestErr$errorRate),
+           main = 'Strip Chart of Test Errors',
+           xlab = 'Model', 
+           ylab = 'ErrorRate',
+           col = c('steelblue', 'coral2', 'purple','darkred'),
+           pch = 16,
+           method = 'jitter',
+           vertical = TRUE)
+```
+
+
+
 Report the mean and sd of selected K values:
 
 ```{r}
@@ -373,6 +396,27 @@ sd(KNNCvBestK)
 
 
 ## Discussion
+
+- Did 10 fold cross validation helped KNN?
+
+**Yes, It did. KNN has the lowest training error compared to all other methods.**
+
+- Did polynomial (quadratic) model fared compared to simple linear model?
+
+**We didn't see any significant improvement in either training errors or test errors compared to linear model.**
+
+- compare mean misclassification error rates of 4 methods?
+
+```{r}
+error_df = data.frame(matrix(c(mean(linearTrainErr$errorRate),mean(linearTestErr$errorRate),mean(quadTrainErr$errorRate),mean(quadTestErr$errorRate),mean(knnTrainErr$errorRate),mean(knnTestErr$errorRate),mean(bayesTrainErr$errorRate),mean(bayesTestErr$errorRate)),ncol = 2))
+
+colnames(error_df) = c("mean_train_error","mean_test_error")
+rownames(error_df) = c("Linear","Quadratic","KNN","Bayes")
+error_df
+
+```
+
+
 
 
 
