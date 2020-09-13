@@ -16,6 +16,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 options(scipen = 1, digits = 4, width = 80, fig.align = "center")
 library(class)
 library(ggplot2)
+set.seed(8742)
 ```
 
 ## Introduction
@@ -55,7 +56,7 @@ knnTrainErr = data.frame(method = rep("KNN",20), set = rep("train", 20), errorRa
 bayesTestErr = data.frame(method = rep("bayesRule",20), set = rep("test", 20), errorRate = rep(0.0, 20)  )
 bayesTrainErr = data.frame(method = rep("bayesRule",20), set = rep("train", 20), errorRate = rep(0., 20)  )
 KNNCvBestK = rep(0, 20)
-set.seed(8742)
+
 ```
 
 - Generate 20 centers randomly
@@ -74,11 +75,7 @@ generateCenters = function() {
 - Function to generate data with a size
 
 ```{r}
-generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
-
-  centers_mat = generateCenters()
-  m0 = centers_mat[[1]]
-  m1 = centers_mat[[2]]
+generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5), m0 = mo, m1 = m1 ) {
   # Randomly allocate the n samples for class 1  to the 10 clusters
   id1 = sample(1:centers, n, replace = TRUE);
   # Randomly allocate the n samples for class 1 to the 10 clusters
@@ -92,16 +89,20 @@ generate_sim_data= function(centers = 10, n = 100, p = 2, sd = sqrt(1/5) ) {
 ```{r}
 generateTrainAndTestData = function(train = 100, test = 5000) {
 
-  train_data = generate_sim_data()
+  centers_mat = generateCenters()
+  center0 = centers_mat[[1]]
+  center1 = centers_mat[[2]]
+  
+  train_data = generate_sim_data(m0=center0,m1=center1)
   train_df = data.frame(train_data)
   train_df$y = c(c(rep(1,train), rep(0,train)))
   colnames(train_df) = c("x1","x2","y")
   
-  test_data = generate_sim_data(n = test)
+  test_data = generate_sim_data(n = test,m0=center0,m1=center1)
   test_df = data.frame(test_data)
   test_df$y = c(rep(1,test), rep(0,test))
   colnames(test_df) = c("x1","x2","y")
-  list(train_data = train_df, test_data = test_df)
+  list(train_data = train_df, test_data = test_df, m0 = center0, m1 = center1)
 }
 ```
 
@@ -113,9 +114,8 @@ generateTrainAndTestData = function(train = 100, test = 5000) {
 sim_data = generateTrainAndTestData()
 train_df = sim_data$train_data
 test_df = sim_data$test_data
-centers_mat = generateCenters()
-m0 = centers_mat[[1]]
-m1 = centers_mat[[2]]
+m0 = sim_data$m0
+m1 = sim_data$m1
 ```
 
 ```{r}
@@ -237,8 +237,8 @@ cvKNN = function(dataSet, foldNum) {
 
 foldNum = 10
 kNearestNeighbor = function(index) {
-  dataSet = train_df[sample(nrow(train_df)),]
-  result = cvKNN(dataSet,foldNum)
+  #dataSet = train_df[sample(nrow(train_df)),]
+  result = cvKNN( train_df[sample(nrow(train_df)),],foldNum)
   c(result$train.cvError,result$cvError,result$bestK)
 }
 ```
@@ -284,6 +284,7 @@ bayesError = function(index) {
   cl_test_pred_Bayes = as.numeric(cl_test_pred_Bayes > 1);
   test.err.Bayes = sum(test_df$y !=  cl_test_pred_Bayes) / nrow(test_df)
   c(train.err.Bayes,test.err.Bayes)
+
 }
 ```
 
@@ -316,6 +317,8 @@ for(i in 1:simSize) {
   sim_data = generateTrainAndTestData()
   train_df = sim_data$train_data
   test_df = sim_data$test_data
+  m0 = sim_data$m0
+  m1 = sim_data$m1
   lr_errors = simpleLinearRegression(i)
   linearTrainErr[i,"errorRate"] = lr_errors[1]
   linearTestErr[i,"errorRate"] = lr_errors[2]
