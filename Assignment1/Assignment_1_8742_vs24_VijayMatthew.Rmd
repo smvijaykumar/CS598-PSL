@@ -411,7 +411,11 @@ sd(KNNCvBestK)
 - compare mean misclassification error rates of 4 methods?
 
 ```{r}
-error_df = data.frame(matrix(c(mean(linearTrainErr$errorRate),mean(linearTestErr$errorRate),min(linearTrainErr$errorRate),min(linearTestErr$errorRate),mean(quadTrainErr$errorRate),mean(quadTestErr$errorRate),min(quadTrainErr$errorRate),min(quadTestErr$errorRate),mean(knnTrainErr$errorRate),mean(knnTestErr$errorRate),min(knnTrainErr$errorRate),min(knnTestErr$errorRate),mean(bayesTrainErr$errorRate),mean(bayesTestErr$errorRate),min(bayesTrainErr$errorRate),min(bayesTestErr$errorRate)),ncol = 4))
+error_df = data.frame(
+  matrix(c(mean(linearTrainErr$errorRate),mean(linearTestErr$errorRate),min(linearTrainErr$errorRate),min(linearTestErr$errorRate),
+           mean(quadTrainErr$errorRate),mean(quadTestErr$errorRate),min(quadTrainErr$errorRate),min(quadTestErr$errorRate),
+           mean(knnTrainErr$errorRate),mean(knnTestErr$errorRate),min(knnTrainErr$errorRate),min(knnTestErr$errorRate),
+           mean(bayesTrainErr$errorRate),mean(bayesTestErr$errorRate),min(bayesTrainErr$errorRate),min(bayesTestErr$errorRate)),ncol = 4, byrow = TRUE))
 
 colnames(error_df) = c("mean_train_error","mean_test_error","min_train_error","min_test_error")
 rownames(error_df) = c("Linear","Quadratic","KNN","Bayes")

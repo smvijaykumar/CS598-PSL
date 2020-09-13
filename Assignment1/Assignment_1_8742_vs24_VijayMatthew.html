@@ -724,16 +724,20 @@ stripchart(x = list(&#39;linear&#39;=linearTestErr$errorRate,&#39;quad&#39;=quad
 <p><strong>We didn’t see any significant improvement in either training errors or test errors compared to linear model.</strong></p></li>
 <li><p>compare mean misclassification error rates of 4 methods?</p></li>
 </ul>
-<pre class="r"><code>error_df = data.frame(matrix(c(mean(linearTrainErr$errorRate),mean(linearTestErr$errorRate),min(linearTrainErr$errorRate),min(linearTestErr$errorRate),mean(quadTrainErr$errorRate),mean(quadTestErr$errorRate),min(quadTrainErr$errorRate),min(quadTestErr$errorRate),mean(knnTrainErr$errorRate),mean(knnTestErr$errorRate),min(knnTrainErr$errorRate),min(knnTestErr$errorRate),mean(bayesTrainErr$errorRate),mean(bayesTestErr$errorRate),min(bayesTrainErr$errorRate),min(bayesTestErr$errorRate)),ncol = 4))
+<pre class="r"><code>error_df = data.frame(
+  matrix(c(mean(linearTrainErr$errorRate),mean(linearTestErr$errorRate),min(linearTrainErr$errorRate),min(linearTestErr$errorRate),
+           mean(quadTrainErr$errorRate),mean(quadTestErr$errorRate),min(quadTrainErr$errorRate),min(quadTestErr$errorRate),
+           mean(knnTrainErr$errorRate),mean(knnTestErr$errorRate),min(knnTrainErr$errorRate),min(knnTestErr$errorRate),
+           mean(bayesTrainErr$errorRate),mean(bayesTestErr$errorRate),min(bayesTrainErr$errorRate),min(bayesTestErr$errorRate)),ncol = 4, byrow = TRUE))
 
 colnames(error_df) = c(&quot;mean_train_error&quot;,&quot;mean_test_error&quot;,&quot;min_train_error&quot;,&quot;min_test_error&quot;)
 rownames(error_df) = c(&quot;Linear&quot;,&quot;Quadratic&quot;,&quot;KNN&quot;,&quot;Bayes&quot;)
 error_df</code></pre>
 <pre><code>##           mean_train_error mean_test_error min_train_error min_test_error
-## Linear              0.2442          0.2340          0.1628         0.1975
-## Quadratic           0.2550          0.2423          0.2251         0.1962
-## KNN                 0.1050          0.0900          0.0000         0.0950
-## Bayes               0.1190          0.1264          0.1262         0.1156</code></pre>
+## Linear              0.2442          0.2550           0.105         0.1190
+## Quadratic           0.2340          0.2423           0.090         0.1264
+## KNN                 0.1628          0.2251           0.000         0.1262
+## Bayes               0.1975          0.1962           0.095         0.1156</code></pre>
 </div>
 <div id="contribution" class="section level2">
 <h2>Contribution</h2>
