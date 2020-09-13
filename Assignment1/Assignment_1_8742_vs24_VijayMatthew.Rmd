@@ -402,29 +402,26 @@ sd(KNNCvBestK)
 
 - Did 10 fold cross validation helped KNN?
 
-**Yes, It did. KNN has the lowest training error compared to all other methods.**
+  **Yes, It did. KNN has the lowest training error compared to all other methods.**
 
 - Did polynomial (quadratic) model fared compared to simple linear model?
 
-**We didn't see any significant improvement in either training errors or test errors compared to linear model.**
+  **We didn't see any significant improvement in either training errors or test errors compared to linear model.**
 
 - compare mean misclassification error rates of 4 methods?
 
 ```{r}
-error_df = data.frame(matrix(c(mean(linearTrainErr$errorRate),mean(linearTestErr$errorRate),mean(quadTrainErr$errorRate),mean(quadTestErr$errorRate),mean(knnTrainErr$errorRate),mean(knnTestErr$errorRate),mean(bayesTrainErr$errorRate),mean(bayesTestErr$errorRate)),ncol = 2))
+error_df = data.frame(matrix(c(mean(linearTrainErr$errorRate),mean(linearTestErr$errorRate),min(linearTrainErr$errorRate),min(linearTestErr$errorRate),mean(quadTrainErr$errorRate),mean(quadTestErr$errorRate),min(quadTrainErr$errorRate),min(quadTestErr$errorRate),mean(knnTrainErr$errorRate),mean(knnTestErr$errorRate),min(knnTrainErr$errorRate),min(knnTestErr$errorRate),mean(bayesTrainErr$errorRate),mean(bayesTestErr$errorRate),min(bayesTrainErr$errorRate),min(bayesTestErr$errorRate)),ncol = 4))
 
-colnames(error_df) = c("mean_train_error","mean_test_error")
+colnames(error_df) = c("mean_train_error","mean_test_error","min_train_error","min_test_error")
 rownames(error_df) = c("Linear","Quadratic","KNN","Bayes")
 error_df
 
 ```
 
 
-
-
-
 ## Contribution
 
-Vijayakumar Mohan contributes to overall factoring programming structure and efficiency to cater to the need of this assignment repeating 4 classification methods for 20 times. 
+Vijayakumar Mohan contributes to overall factoring programming structure and efficiency to cater to the need of this assignment repeating 4 classification methods for 20 times. Also worked on Stripchart and Discussion section. 
 
-Matthew Leung contributes to visualization, verification of calculation and overall presentation of the report.
+Matthew Leung contributes to visualization, verification of calculation and overall presentation of the report. Proactively checked with professor and found and got a solution for the issue.
