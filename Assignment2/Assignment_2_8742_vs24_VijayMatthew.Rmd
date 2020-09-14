@@ -20,7 +20,7 @@ set.seed(8742)
 ## Introduction
 
 Implement Lasso using the Coordinate Descent (CD) algorithm and apply our algorithm
-on the Boston housing data. The goal is to check the accuracy of our implementation compare to the output of glmnet.The maximum diference between the two coefficient matrices should be less than 0.005.
+on the Boston housing data. The goal is to check the accuracy of our implementation compare to the output of glmnet.The maximum difference between the two coefficient matrices should be less than 0.005.
 
 
 ## Data Preparation
@@ -85,7 +85,7 @@ MyLasso = function(X, y, lam.seq, maxit = 50) {
     # Xs = centered and scaled X
     
     y.mean = mean(y)
-    yc = y - mean(y)
+    yc = y - y.mean
     
     X.mean = apply(X, 2, mean)
     X.sd = apply((X - X.mean)^2, 2, mean)
@@ -116,6 +116,10 @@ MyLasso = function(X, y, lam.seq, maxit = 50) {
     # YOUR CODE:
     # Scale back the coefficients;
     # Update the intercepts stored in B[, 1]
+
+    B[, 1] = y.mean - apply(X.mean/X.sd * B[, 2:p], 1, sum)
+    B[, 2:p] = B[, 2:p]/X.sd
+    B
     ##############################
 }
 
@@ -131,10 +135,11 @@ lam.seq = c(0.30 , 0.2 , 0.1 , 0.05 , 0.02 , 0.005)
 lasso.fit = glmnet (X, y, alpha = 1, lambda = lam.seq)
 coef ( lasso.fit )
 
-myout = MyLasso (X, y, lam.seq , maxit = 50)
-rownames ( myout ) = c(" Intercept ", colnames (X))
+myout = MyLasso(X, y, lam.seq , maxit = 50)
+myout = t(myout)
+rownames(myout) = c("Intercept", colnames(X))
 myout
-max(abs( coef ( lasso.fit ) - myout ))
+max(abs(coef(lasso.fit) - myout))
 
 ```
 
