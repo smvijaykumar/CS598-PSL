@@ -120,7 +120,7 @@ MyLasso = function(X, y, lam.seq, maxit = 50) {
 
     B[, 1] = y.mean - apply(B[,2:(p+1)] * rep(X.mean/X.sd, rep.int(nlam, p)), 1, sum)
     B[, 2:(p+1)] = B[, 2:(p+1)]/ rep(X.sd, rep.int(nlam, p))
-    B
+    t(B)
     ##############################
 }
 
@@ -136,8 +136,7 @@ lam.seq = c(0.30 , 0.2 , 0.1 , 0.05 , 0.02 , 0.005)
 lasso.fit = glmnet (X, y, alpha = 1, lambda = lam.seq)
 coef ( lasso.fit )
 
-myout = MyLasso(X, y, lam.seq , maxit = 50)
-myout = t(myout)
+myout = MyLasso(X, y, lam.seq , maxit = 100)
 rownames(myout) = c("Intercept", colnames(X))
 myout
 max(abs(coef(lasso.fit) - myout))
