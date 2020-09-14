@@ -83,7 +83,16 @@ MyLasso = function(X, y, lam.seq, maxit = 50) {
     # y.mean = mean(y)
     # yc = centered y
     # Xs = centered and scaled X
+    
+    y.mean = mean(y)
+    yc = y - mean(y)
+    
+    X.mean = apply(X, 2, mean)
+    X.sd = apply((X - X.mean)^2, 2, mean)
+    Xs = (X - X.mean)/X.sd
     ##############################
+    
+    
 
     # Initilize coef vector b and residual vector r
     b = rep(0, p)
