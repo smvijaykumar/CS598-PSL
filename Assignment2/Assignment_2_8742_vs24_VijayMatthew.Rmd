@@ -47,6 +47,11 @@ lam.seq = c(0.30, 0.2, 0.1, 0.05, 0.02, 0.005)
 ```
 
 
+```{r}
+pairs(myData)
+```
+
+
 ## CD for Lasso
 
 Implement the Coordinate Descent algorithm for Lasso in the function MyLasso here.
@@ -143,6 +148,12 @@ max(abs(coef(lasso.fit) - myout))
 
 ```
 
+```{r}
+plot(lasso.fit, xvar = "lambda", label=TRUE)
+# Now the l1-norm of the coefficients decreases as lambda increases
+plot(lasso.fit$lambda, colSums(abs(lasso.fit$beta)), type = "l",
+     xlab = "lambda", ylab = "l1 norm")
+```
 
 
 ## Discussion
