@@ -528,6 +528,7 @@ myout</code></pre>
 ## ptratio    0.00000  0.0000 -0.004303 -0.023646 -0.033639 -0.038234
 ## black      0.00000  0.0000  0.000000  0.008522  0.031255  0.043452
 ## lstat     -0.03742 -0.1388 -0.237638 -0.244529 -0.243440 -0.256683</code></pre>
+<p>Compare the accuracy of my algorithm against the output from glmnet. The maximum difference between the two coefficient matrices is less than 0.005.</p>
 <pre class="r"><code>max(abs(coef(lasso.fit) - myout))</code></pre>
 <pre><code>## [1] 0.00167</code></pre>
 <pre class="r"><code>plot(lasso.fit, xvar = &quot;lambda&quot;, label=TRUE)</code></pre>
@@ -539,11 +540,12 @@ plot(lasso.fit$lambda, colSums(abs(lasso.fit$beta)), type = &quot;l&quot;,
 </div>
 <div id="discussion" class="section level2">
 <h2>Discussion</h2>
+<p>We are able to replicate glmnet Lasso regularization Coordinate Decent (CD) algorithm on Housing Values in Suburbs of Boston dataset. From the visualization of coefficient Vs Lambda plot, we can see as lambda increases, more and more coefficients becomes zero. lstat remains non-zero at high lambda value. This is consistent with what we see in the pair plot that response medv has high negative correlations with lstat.</p>
 </div>
 <div id="contribution" class="section level2">
 <h2>Contribution</h2>
-<p>Vijayakumar Mohan contributes</p>
-<p>Matthew Leung contributes to</p>
+<p>Vijayakumar Mohan contributes to verification of algorithm implementation and visualization.</p>
+<p>Matthew Leung contributes to algorithm implementation and overall report presentation.</p>
 </div>
 
 

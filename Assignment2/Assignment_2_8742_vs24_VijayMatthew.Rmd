@@ -144,6 +144,13 @@ coef ( lasso.fit )
 myout = MyLasso(X, y, lam.seq , maxit = 100)
 rownames(myout) = c("Intercept", colnames(X))
 myout
+
+
+```
+
+Compare the accuracy of my algorithm against the output from glmnet. The maximum difference between the two coefficient matrices is less than 0.005.
+
+```{r}
 max(abs(coef(lasso.fit) - myout))
 
 ```
@@ -158,9 +165,10 @@ plot(lasso.fit$lambda, colSums(abs(lasso.fit$beta)), type = "l",
 
 ## Discussion
 
+We are able to replicate glmnet Lasso regularization Coordinate Decent (CD) algorithm on Housing Values in Suburbs of Boston dataset. From the visualization of coefficient Vs Lambda plot, we can see as lambda increases, more and more coefficients becomes zero. lstat remains non-zero at high lambda value. This is consistent with what we see in the pair plot that response medv has high negative correlations with lstat. 
 
 ## Contribution
 
-Vijayakumar Mohan contributes 
+Vijayakumar Mohan contributes to verification of algorithm implementation and visualization.
 
-Matthew Leung contributes to
+Matthew Leung contributes to algorithm implementation and overall report presentation.
