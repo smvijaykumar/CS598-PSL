@@ -23,10 +23,7 @@ library(tidyr)
 library(knitr)
 library(randomForest)
 library(xgboost)
-library(gbm)
-library(gam)
-library(e1071)
-library(glmnet)
+
 ```
 
 ## Introduction
@@ -126,11 +123,11 @@ summary(model_rf)
 model_rf
 # rmse of training data
 predict_rf_train = predict(model_rf,mtry =30, ntree =500)
-rmse(trainData$Sale_Price_Log, predict_rf_train)
+RMSE(trainData$Sale_Price_Log, predict_rf_train)
 
 # rmse of testing data
 preds2 <- predict(model_rf, newdata = as.matrix(testData), mtry =30, ntree =500 )
-rmse(test.y$Sale_Price_Log, preds2)
+RMSE(test.y$Sale_Price_Log, preds2)
 
 test.y$pred_sale_price = round(exp(preds2),1)
 mysubm1 = data.frame(test.y[,c("PID","pred_sale_price")])
@@ -172,10 +169,10 @@ xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Pric
 ## Predictions
 # rmse of training data
 predict_rf_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]))
-rmse(trainData$Sale_Price_Log, predict_rf_train)
+RMSE(trainData$Sale_Price_Log, predict_rf_train)
 # rmse of testing data
 preds2 <- predict(xgbFit, newdata = as.matrix(testData))
-rmse(test.y$Sale_Price_Log, preds2)
+RMSE(test.y$Sale_Price_Log, preds2)
 test.y$pred_sale_price = round(exp(preds2),1)
 mysubm2 = data.frame(test.y[,c("PID","pred_sale_price")])
 colnames(mysubm2) = c("PID","Sale_Price")
@@ -183,14 +180,14 @@ write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE)
 ```
 
 ```{r}
-cv_lasso=cv.glmnet(as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]),trainData$Sale_Price_Log, nfolds = 10)
-## Predictions
-
-preds_train<-predict(cv_lasso,newx=as.matrix(X),s="lambda.min")
-rmse(trainData$Sale_Price_Log,preds_train)
-
-preds<-predict(cv_lasso,newx=as.matrix(testData),s="lambda.min")
-rmse(test.y$Sale_Price_Log,preds)
+# cv_lasso=cv.glmnet(as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]),trainData$Sale_Price_Log, nfolds = 10)
+# ## Predictions
+# 
+# preds_train<-predict(cv_lasso,newx=as.matrix(X),s="lambda.min")
+# RMSE(trainData$Sale_Price_Log,preds_train)
+# 
+# preds<-predict(cv_lasso,newx=as.matrix(testData),s="lambda.min")
+# RMSE(test.y$Sale_Price_Log,preds)
 ```
 
 
