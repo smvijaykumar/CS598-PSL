@@ -21,7 +21,6 @@ library(tidyr)
 library(caret)
 library(tidyr)
 library(knitr)
-library(randomForest)
 library(xgboost)
 library(glmnet)
 library(e1071)
@@ -29,7 +28,18 @@ library(e1071)
 
 ## Introduction
 
+The goal is to predict the final price of a home (in log scale) using AMES housing dataset. As a project requirement we need to build Two prediction models and we chose Lasso Regression and XBGBoost as our model to predict the sale price.
 
+The dataset has 2930 rows (i.e., houses) and 83 columns.
+    The first column is “PID”, the Parcel identification number;
+    The last column is the response variable, Sale_Price;
+    The remaining 81 columns are explanatory variables describing (almost) every aspect of residential homes.
+
+Finally we need to create two output files with the predictions prices from each model.
+
+## Method
+
+### Utility Functions
 ```{r}
 
 hotEncoding = function(dataset) {
@@ -42,18 +52,6 @@ RMSE = function(actual, predicted) {
   sqrt(mean((actual - predicted)^2))
 }
 
-winsorize = function(data) {
-  winsor.vars <- c( "Lot_Area", "Mas_Vnr_Area", "BsmtFin_SF_2", "Bsmt_Unf_SF", "Total_Bsmt_SF", "Second_Flr_SF", 'First_Flr_SF', "Gr_Liv_Area", "Garage_Area", "Wood_Deck_SF", "Open_Porch_SF", "Enclosed_Porch", "Three_season_porch", "Screen_Porch", "Misc_Val")
-  
-  quan.value <- 0.95
-  for(var in winsor.vars){
-      tmp <- data[, var]
-      myquan <- quantile(tmp, probs = quan.value, na.rm = TRUE)
-      tmp[tmp > myquan] <- myquan
-      data[, var] <- tmp
-  }
-  data
-}
 
 removeVars = function(data) {
 
@@ -80,40 +78,39 @@ getSkewedVars = function(data) {
   }
   skewedVars[-1]
 }
-
-applyLogTransformation = function() {
-  
-log.train <- new.Train
-log.test <- new.Test
-
-for(i in skewedVars){
-  if(0 %in% new.Train[, i]){
-    log.train[,i] <- log(1+new.Train[,i])
-    log.test[,i] <- log(1+new.Test[,i])
-  }
-  else{
-    log.train[,i] <- log(new.Train[,i])
-    log.test[,i] <- log(new.Test[,i])
-  }
-}
-
-for(i in skewedVars){
-  if(0 %in% new.Train[, i]){
-    dummyVector <- ifelse(log.train[,i] > 0, 1, 0)
-    log.train <- data.frame(log.train, factor(dummyVector))
-    colnames(log.train)[ncol(log.train)] <- paste(i, "ZERO", sep="")
-
-    dummyVector <- ifelse(log.test[,i] > 0, 1, 0)
-    log.test <- data.frame(log.test, factor(dummyVector))
-    colnames(log.test)[ncol(log.test)] <- paste(i, "ZERO", sep="")
-  }
-}
-
-}
 ```
 
+### Data Read and Exploration
+
+
+- Summary Data
 ```{r}
 data = read.csv("Ames_data.csv")
+str(data)
+```
+
+- Correlation in Data 
+```{r}
+pairs(data)
+```
+
+- Skewness in Data
+
+```{r}
+plot(Sale_Price ~ Gr_Liv_Area, data = data)
+plot(Sale_Price ~ Year_Built, data = data)
+plot(Sale_Price ~ LotArea, data = data)
+```
+
+### Data PreProcessing
+
+- Remove Certain Features
+- Impute Missing Values
+- Log transformation for skewed features
+- Remove Outlier Data points
+
+```{r}
+
 data = removeVars(data)
 d <- preProcess(data, "medianImpute")
 data = predict(d,data)
@@ -138,11 +135,6 @@ data_encoded$Sale_Price_Log = log(data$Sale_Price)
 fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area + BsmtFin_SF_2 + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF + Open_Porch_SF + Enclosed_Porch + Three_season_porch + Screen_Porch + Misc_Val, data = data_encoded)
 fit_cd = cooks.distance(fit)
 data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
-
-
-#data_encoded$Lot_Area = log(data_encoded$Lot_Area)
-#data_encoded$First_Flr_SF = log(data_encoded$First_Flr_SF)
-
 
 paste("Number of Missing Values", sum(is.na(data_encoded)))
 data_encoded <- data_encoded %>% 
@@ -174,39 +166,16 @@ testData = testData[complete.cases(testData),]
 test.y = test.y[complete.cases(test.y),]
 ```
 
+### Model Building
+
+- LASSO Regression Model
+
++ Cross Validation to choose Lamda hyperparameter
++ Feature Engineering
++ Fit & Predict using selected Model
 
 ```{r}
-dim(trainData)
-dim(testData)
-```
-
-
-```{r}
- xgb.fit1 <- xgb.cv(
-   data = trainData %>% as.matrix(),
-   label = trainData$Sale_Price_Log,
-   nrounds = 2000,
-   nfold = 5,
-   objective = "reg:linear",  # for regression models
-   verbose = 0               # silent,
-   #early_stopping_rounds = 10
- )
- 
- xgb.fit1$evaluation_log %>%
-   dplyr::summarise(
-     ntrees.train = which(train_rmse_mean == min(train_rmse_mean))[1],
-     rmse.train   = min(train_rmse_mean),
-     ntrees.test  = which(test_rmse_mean == min(test_rmse_mean))[1],
-     rmse.test   = min(test_rmse_mean),
-   )
-
-```
-
-```{r}
-```
-
-```{r}
-set.seed(4)
+set.seed(8742)
 
 X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
 
@@ -227,66 +196,12 @@ preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.m
 RMSE(test.y$Sale_Price_Log,preds)
 test.y$pred_sale_price = preds
  
- 
- 
-```
-```{r}
-set.seed(471)
-n = 10
-nr = nrow(trainData)
-#train.10 = split(trainData, f = rep_len(1:n,nr))
-train.10 = split(trainData, sample(1:n, nr, replace =T ))
-for(i in 1:length(train.10)) {
-  trainData1 = train.10[[i]]
-  X = trainData1[,!names(trainData1) %in% c("Sale_Price","Sale_Price_Log","PID")]
-  preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-  print(RMSE(trainData1$Sale_Price_Log,preds_train))
-}
-nr = nrow(test.y)
-test1Data = merge(testData, test.y, by = "PID")
-test.y.10 = split(test1Data, sample(1:n, nr, replace = TRUE ))
-#test.y.10 = split(test1Data, f= rep_len(1:n,nr))
-for(i in 1:length(test.y.10)) {
-  testData1 = test.y.10[[i]]
-  X = testData1[,!names(testData1) %in% c("Sale_Price","Sale_Price_Log","PID","pred_sale_price")]
-  preds_test<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-  print(RMSE(testData1$Sale_Price_Log,preds_test))
-}
-
 ```
 
 
-```{r}
-plot(cv_lasso)
-```
-
-
-```{r}
-pred <- read.csv("mysubmission1.txt")
-names(test.y)[2] <- "True_Sale_Price"
-pred <- merge(pred, test.y, by="PID")
-sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2))
-
-pred <- read.csv("mysubmission2.txt")
-names(test.y)[2] <- "True_Sale_Price"
-pred <- merge(pred, test.y, by="PID")
-sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2))
-```
-
-
-```{r}
-mean(c(0.1230802,
-0.1205381,
-0.1199168,
-0.1206789,
-0.1128222,
-0.1320535,
-0.1252759,
-0.1193803,
-0.1300544,
-0.1247375))
-```
-
+- XGBoost
++ Cross Validation to choose Lamda, subsample, max_depth hyperparameter
++ Feature Engineering
 
 
 ```{r}
@@ -301,7 +216,7 @@ parameters_list = list()
 
 # Create 10,000 rows with random hyperparameters
 set.seed(8742)
-for (iter in 1:1000){
+for (iter in 1:10000){
   param <- list(booster = "gbtree",
                 objective = "reg:squarederror",
                 max_depth = sample(4:6, 1),
@@ -350,6 +265,8 @@ time.taken <- end.time - start.time
 time.taken
 ```
 
++ Fit & Predict using selected Model
+
 ```{r}
 set.seed(8742)
 xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]), nfold = 5, label = as.matrix(trainData$Sale_Price_Log), 
@@ -360,8 +277,8 @@ xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Pric
 
 ## Predictions
 # rmse of training data
-predict_rf_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]))
-RMSE(trainData$Sale_Price_Log, predict_rf_train)
+predict_xg_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]))
+RMSE(trainData$Sale_Price_Log, predict_xg_train)
 # rmse of testing data
 preds2 <- predict(xgbFit, newdata = as.matrix(testData))
 RMSE(test.y$Sale_Price_Log, preds2)
@@ -371,4 +288,59 @@ colnames(mysubm2) = c("PID","Sale_Price")
 write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE)
 
 ```
+
+## Results
+
+
+```{r}
+set.seed(8742)
+n = 10
+nr = nrow(trainData)
+#train.10 = split(trainData, f = rep_len(1:n,nr))
+train.10 = split(trainData, sample(1:n, nr, replace =T ))
+for(i in 1:length(train.10)) {
+  trainData1 = train.10[[i]]
+  X = trainData1[,!names(trainData1) %in% c("Sale_Price","Sale_Price_Log","PID")]
+  preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
+  print(RMSE(trainData1$Sale_Price_Log,preds_train))
+}
+nr = nrow(test.y)
+test1Data = merge(testData, test.y, by = "PID")
+test.y.10 = split(test1Data, sample(1:n, nr, replace = TRUE ))
+#test.y.10 = split(test1Data, f= rep_len(1:n,nr))
+for(i in 1:length(test.y.10)) {
+  testData1 = test.y.10[[i]]
+  X = testData1[,!names(testData1) %in% c("Sale_Price","Sale_Price_Log","PID","pred_sale_price")]
+  preds_test<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
+  print(RMSE(testData1$Sale_Price_Log,preds_test))
+}
+
+```
+
+
+```{r}
+set.seed(8742)
+n = 10
+nr = nrow(trainData)
+#train.10 = split(trainData, f = rep_len(1:n,nr))
+train.10 = split(trainData, sample(1:n, nr, replace =T ))
+for(i in 1:length(train.10)) {
+  trainData1 = train.10[[i]]
+  X = trainData1[,!names(trainData1) %in% c("Sale_Price","Sale_Price_Log","PID")]
+  preds_train = predict(xgbFit, newdata = as.matrix(X))
+  print(RMSE(trainData1$Sale_Price_Log,preds_train))
+}
+nr = nrow(test.y)
+test1Data = merge(testData, test.y, by = "PID")
+test.y.10 = split(test1Data, sample(1:n, nr, replace = TRUE ))
+#test.y.10 = split(test1Data, f= rep_len(1:n,nr))
+for(i in 1:length(test.y.10)) {
+  testData1 = test.y.10[[i]]
+  X = testData1[,!names(testData1) %in% c("Sale_Price","Sale_Price_Log","PID","pred_sale_price")]
+  preds_test <- predict(xgbFit, newdata = as.matrix(X))
+  print(RMSE(testData1$Sale_Price_Log,preds_test))
+}
+```
+
+## Discussion
 
