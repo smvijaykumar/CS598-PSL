@@ -1,123 +1,162 @@
-library(dplyr)
-library(tidyr)
-library(caret)
-library(randomForest)
-library(xgboost)
-library(glmnet)
+options(warn=-1,message=-1)
+set.seed(8742)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(caret)
+  library(tidyr)
+  library(xgboost)
+  library(glmnet)
+  library(e1071)
+})
 
 hotEncoding = function(dataset) {
-  
-  dummies_model = dummyVars(Sale_Price ~ ., data=dataset)
-  
+  dummies_model = dummyVars(Sale_Price ~ . -PID, data=dataset)
   dataset = predict(dummies_model, newdata = dataset)
   dataset = data.frame(dataset)
-  # Find zero varience factors using caret
-  nzv.data = nearZeroVar(dataset, saveMetrics = TRUE)
-  
-  # Remove zero variance factors
-  drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
-  dataset = dataset[,!names(dataset) %in% drop.cols]
 }
 
 RMSE = function(actual, predicted) {
   sqrt(mean((actual - predicted)^2))
 }
 
+
+removeVars = function(data) {
+  
+  remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude',"Lot_Frontage")
+  data[,!names(data) %in% remove.var]
+}
+
+getSkewedVars = function(data) {
+  skewedVars <- NA
+  
+  for(i in names(data)){
+    if(is.numeric(data[,i])){
+      if((i != "Sale_Price") & (i != "PID")){
+        if(length(levels(as.factor(data[,i]))) > 10){
+          # Enters this block if variable is non-categorical
+          skewVal <- skewness(data[,i])
+#          print(paste(i, skewVal, sep = ": "))
+          if(abs(skewVal) > 0.5){
+            skewedVars <- c(skewedVars, i)
+          }
+        }
+      }
+    }
+  }
+  skewedVars[-1]
+}
+
+#Read Dataset
+
 data = read.csv("Ames_data.csv")
+
+#Data Preprocessing 
+data = removeVars(data)
+d <- preProcess(data, "medianImpute")
+data = predict(d,data)
+
+skewed.vars = getSkewedVars(data)
 data_encoded = hotEncoding(data)
+
+for(i in skewed.vars){
+  if(0 %in% data_encoded[, i]){
+    data_encoded[,i] <- log(1+data_encoded[,i])
+  }
+  else{
+    data_encoded[,i] <- log(data_encoded[,i])
+  }
+}
+
+data_encoded$PID = data$PID
 data_encoded$Sale_Price = data$Sale_Price
 data_encoded$Sale_Price_Log = log(data$Sale_Price)
+
+fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area + BsmtFin_SF_2 + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF + Open_Porch_SF + Enclosed_Porch + Three_season_porch + Screen_Porch + Misc_Val, data = data_encoded)
+fit_cd = cooks.distance(fit)
+data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
+
+
+paste("Number of Missing Values", sum(is.na(data_encoded)))
+data_encoded <- data_encoded %>% 
+  fill(
+    dplyr::everything()
+  )
+# counting number of missing values
+paste("Number of Missing Values", sum(is.na(data_encoded)))
+
 
 testIDs <- read.table("project1_testIDs.dat")
 j <- 2
 train <- data_encoded[-testIDs[,j], ]
 test <- data_encoded[testIDs[,j], ]
-test.y <- data_encoded[, c(1, 136,137)]
-test <- data_encoded[, -c(136,137)]
+#test.y <- test[, c(1, 136,137)]
+#test <- test[, -c(136,137)]
+test.y <- test[, c("PID", "Sale_Price","Sale_Price_Log")]
+test <- test[, !names(test) %in% c("Sale_Price","Sale_Price_Log")]
+
 write.csv(train,"train.csv",row.names=FALSE)
 write.csv(test, "test.csv",row.names=FALSE)
 write.csv(test.y,"test_y.csv",row.names=FALSE)
 
-train <- read.csv("train.csv")
+trainData <- read.csv("train.csv")
+testData <- read.csv("test.csv")
+testData = testData[complete.cases(testData),]
+test.y = test.y[complete.cases(test.y),]
 
-test <- read.csv("test.csv")
-
-paste("Number of Missing Values", sum(is.na(train)))
-trainData <- train %>% 
-  fill(
-    dplyr::everything()
-  )
-
-testData <- test %>% 
-  fill(
-    dplyr::everything()
-  )
-# counting number of missing values
-paste("Number of Missing Values", sum(is.na(trainData)))
+#Model Building
 
 set.seed(8742)
-X = trainData[,!names(trainData) %in% c("Sale_Price")]
 
-# # oob = trainControl(method = "oob")
-# cv_10 = trainControl(method = "cv", number = 10)
-# # 
-# # 
-# rf_grid =  data.frame(mtry = seq(12,36,6))
-# bank_rf_tune = train(Sale_Price_Log ~ ., data = X,
-#                       method = "rf",
-#                       trControl = cv_10,
-#                       preProcess=c("center","scale"),
-#                       verbose = TRUE,
-#                       tuneGrid = rf_grid,ntree = 500, metric="RMSE")
-#  bank_rf_tune
+X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
 
-rf_mtry = ceiling(sqrt(ncol(X)))
-model_rf = randomForest(Sale_Price_Log ~ ., 
-                        data = X,
-                        mtry = 30,
-                        importance = T,ntree = 500)
-# plot of random forest
-summary(model_rf)
+cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1)
+cv_lasso$lambda.min
 
-# rmse of training data
-predict_rf_train = predict(model_rf,mtry =30, ntree =500)
-RMSE(trainData$Sale_Price_Log, predict_rf_train)
+# select variables
+sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
 
-# rmse of testing data
-preds2 <- predict(model_rf, newdata = as.matrix(testData), mtry =30, ntree =500 )
-RMSE(test.y$Sale_Price_Log, preds2)
+lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha = 1)
 
-test.y$pred_sale_price = round(exp(preds2),1)
+# ## Predictions
+preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
+paste("Model1 Lasso Train RMSE:",RMSE(trainData$Sale_Price_Log,preds_train))
+#trainData$pred_sale_price = preds_train
+
+preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
+paste("Model1:Lasso Test RMSE:",RMSE(test.y$Sale_Price_Log,preds))
+test.y$pred_sale_price = round(exp(preds),1)
+
 mysubm1 = data.frame(test.y[,c("PID","pred_sale_price")])
 colnames(mysubm1) = c("PID","Sale_Price")
-write.csv(mysubm1, file = "mysubmission1.txt", row.names = FALSE,quote = FALSE)
+write.csv(mysubm1, file = "mysubmission1.txt", row.names = FALSE)
 
 set.seed(8742)
-xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]), nfold = 5, label = as.matrix(train$Sale_Price_Log), 
-                 nrounds = 2200, verbose = FALSE, objective = "reg:linear", eval_metric = "rmse", 
-                 nthread = 8, eta = 0.01, gamma = 0.0468, max_depth = 6, min_child_weight = 1.7817, 
-                 subsample = 0.5213, colsample_bytree = 0.4603)
-## print(xgbFit)
-
+xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]),
+                 label = as.matrix(trainData$Sale_Price_Log), 
+                 nrounds = 2200, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
+                 nthread = 8, eta = 0.01, max_depth = 6, subsample = 0.5213)
 ## Predictions
 # rmse of training data
-predict_rf_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]))
-RMSE(trainData$Sale_Price_Log, predict_rf_train)
+predict_rf_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]))
+paste("Model2 XGBoost Train RMSE:",RMSE(trainData$Sale_Price_Log, predict_rf_train))
 # rmse of testing data
 preds2 <- predict(xgbFit, newdata = as.matrix(testData))
-RMSE(test.y$Sale_Price_Log, preds2)
-
+paste("Model2 XGBoost Test RMSE:",RMSE(test.y$Sale_Price_Log, preds2))
 test.y$pred_sale_price = round(exp(preds2),1)
+
 mysubm2 = data.frame(test.y[,c("PID","pred_sale_price")])
 colnames(mysubm2) = c("PID","Sale_Price")
-write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE, quote = FALSE)
+write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE)
+
 
 pred <- read.csv("mysubmission1.txt")
 names(test.y)[2] <- "True_Sale_Price"
 pred <- merge(pred, test.y, by="PID")
-sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2))
+paste("My Submission1 RMSE:",sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2)))
 
 pred <- read.csv("mysubmission2.txt")
 names(test.y)[2] <- "True_Sale_Price"
 pred <- merge(pred, test.y, by="PID")
-sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2))
+paste("My Submission1 RMSE:",sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2)))
