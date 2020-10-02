@@ -53,9 +53,9 @@ RMSE = function(actual, predicted) {
 }
 
 
-removeVars = function(data) {
+removeVars = function(data,remove.var) {
 
-  remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude',"Lot_Frontage")
+  #remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude')
   data[,!names(data) %in% remove.var]
 }
 
@@ -68,7 +68,6 @@ getSkewedVars = function(data) {
         if(length(levels(as.factor(data[,i]))) > 10){
           # Enters this block if variable is non-categorical
           skewVal <- skewness(data[,i])
-          print(paste(i, skewVal, sep = ": "))
           if(abs(skewVal) > 0.25){
             skewedVars <- c(skewedVars, i)
           }
@@ -83,38 +82,53 @@ getSkewedVars = function(data) {
 ### Data Read and Exploration
 
 
-- Summary Data
+- Load Data
 ```{r}
 data = read.csv("Ames_data.csv")
-str(data)
 ```
 
-- Correlation in Data 
+- Analysis of Response Variable(Sale Price)
+
+A mean and median sale price of $180,796 and $160,000 respectively, indicating a positive skew, which was confirmed by histogram of the Sale Price.
+
+A long right tail tells that there are outlier data points. max = 755,000 and min = 12,789
+
 ```{r}
-pairs(data)
+summary(data$Sale_Price)
+hist(data$Sale_Price,col = "blue", main = "Histogram of Sale Price", xlab = "Sale Price")
 ```
 
 - Skewness in Data
 
 ```{r}
+par(mfrow=c(1,3))
 plot(Sale_Price ~ Gr_Liv_Area, data = data)
-plot(Sale_Price ~ Year_Built, data = data)
-plot(Sale_Price ~ LotArea, data = data)
+plot(Sale_Price ~ Garage_Area, data = data)
+plot(Sale_Price ~ Lot_Area, data = data)
 ```
 
 ### Data PreProcessing
 
-- Remove Certain Features
-- Impute Missing Values
-- Log transformation for skewed features
-- Remove Outlier Data points
+- Remove features with Zero variance
+```{r}
+  # Find zero varience factors using caret
+  nzv.data = nearZeroVar(data, saveMetrics = TRUE)
+
+  # Remove zero variance factors
+  drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
+  remove.var = c(drop.cols, "Longitude","Latitude")
+  data = removeVars(data,remove.var)
+```
+
+- Impute Missing Values with Preprocess using Caret package
 
 ```{r}
-
-data = removeVars(data)
 d <- preProcess(data, "medianImpute")
 data = predict(d,data)
-#data = winsorize(data)
+```
+
+- Log transformation for skewed features
+```{r}
 
 skewed.vars = getSkewedVars(data)
 data_encoded = hotEncoding(data)
@@ -132,20 +146,33 @@ data_encoded$PID = data$PID
 data_encoded$Sale_Price = data$Sale_Price
 data_encoded$Sale_Price_Log = log(data$Sale_Price)
 
-fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area + BsmtFin_SF_2 + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF + Open_Porch_SF + Enclosed_Porch + Three_season_porch + Screen_Porch + Misc_Val, data = data_encoded)
+```
+
+- Remove Outlier Data points
+
+```{r}
+fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
 fit_cd = cooks.distance(fit)
 data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
 
+```
+
+- Check for missing value
+
+```{r}
 paste("Number of Missing Values", sum(is.na(data_encoded)))
 data_encoded <- data_encoded %>% 
                     fill(
                       dplyr::everything()
                     )
-
-
 # counting number of missing values
 paste("Number of Missing Values", sum(is.na(data_encoded)))
 
+```
+
+- Train and Test Data Split
+
+```{r}
 
 testIDs <- read.table("project1_testIDs.dat")
 j <- 2
@@ -164,6 +191,7 @@ trainData <- read.csv("train.csv")
 testData <- read.csv("test.csv")
 testData = testData[complete.cases(testData),]
 test.y = test.y[complete.cases(test.y),]
+
 ```
 
 ### Model Building
@@ -171,20 +199,22 @@ test.y = test.y[complete.cases(test.y),]
 - LASSO Regression Model
 
 + Cross Validation to choose Lamda hyperparameter
+```{r}
+set.seed(8742)
+X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
+cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1)
+cv_lasso$lambda.min
+```
+
 + Feature Engineering
+```{r}
+# select variables
+sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
+```
+
 + Fit & Predict using selected Model
 
 ```{r}
-set.seed(8742)
-
-X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
-
-cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1)
-cv_lasso$lambda.min
-
-# select variables
-sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
- 
 lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha = 1)
 
 # ## Predictions
@@ -199,12 +229,10 @@ test.y$pred_sale_price = preds
 ```
 
 
-- XGBoost
+- XGBoost - Boosting Model
 + Cross Validation to choose Lamda, subsample, max_depth hyperparameter
-+ Feature Engineering
 
-
-```{r}
+```{r eval=FALSE, message=FALSE, warning=FALSE}
 start.time <- Sys.time()
 
 dtrain <- xgb.DMatrix(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]), label = as.matrix(trainData$Sale_Price_Log)) 
@@ -267,20 +295,19 @@ time.taken
 
 + Fit & Predict using selected Model
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 set.seed(8742)
-xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]), nfold = 5, label = as.matrix(trainData$Sale_Price_Log), 
-    nrounds = 2200, verbose = FALSE, objective = "reg:linear", eval_metric = "rmse", 
+xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]), label = as.matrix(trainData$Sale_Price_Log), 
+    nrounds = 2200, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
     nthread = 8, eta = 0.01, max_depth = 6, 
     subsample = 0.5213)
-## print(xgbFit)
 
 ## Predictions
 # rmse of training data
-predict_xg_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]))
+predict_xg_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]))
 RMSE(trainData$Sale_Price_Log, predict_xg_train)
 # rmse of testing data
-preds2 <- predict(xgbFit, newdata = as.matrix(testData))
+preds2 <- predict(xgbFit, newdata = as.matrix(testData[,!names(testData) %in% c("PID")]))
 RMSE(test.y$Sale_Price_Log, preds2)
 test.y$pred_sale_price = round(exp(preds2),1)
 mysubm2 = data.frame(test.y[,c("PID","pred_sale_price")])
@@ -294,15 +321,18 @@ write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE)
 
 ```{r}
 set.seed(8742)
+
 n = 10
 nr = nrow(trainData)
+lasso.train.error = rep(0,n)
+lasso.test.error = rep(0,n)
 #train.10 = split(trainData, f = rep_len(1:n,nr))
 train.10 = split(trainData, sample(1:n, nr, replace =T ))
 for(i in 1:length(train.10)) {
   trainData1 = train.10[[i]]
   X = trainData1[,!names(trainData1) %in% c("Sale_Price","Sale_Price_Log","PID")]
   preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-  print(RMSE(trainData1$Sale_Price_Log,preds_train))
+  lasso.train.error[i] = (RMSE(trainData1$Sale_Price_Log,preds_train))
 }
 nr = nrow(test.y)
 test1Data = merge(testData, test.y, by = "PID")
@@ -312,7 +342,7 @@ for(i in 1:length(test.y.10)) {
   testData1 = test.y.10[[i]]
   X = testData1[,!names(testData1) %in% c("Sale_Price","Sale_Price_Log","PID","pred_sale_price")]
   preds_test<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-  print(RMSE(testData1$Sale_Price_Log,preds_test))
+  lasso.test.error[i] = (RMSE(testData1$Sale_Price_Log,preds_test))
 }
 
 ```
@@ -322,13 +352,15 @@ for(i in 1:length(test.y.10)) {
 set.seed(8742)
 n = 10
 nr = nrow(trainData)
+xg.train.error = rep(0,n)
+xg.test.error = rep(0,n)
 #train.10 = split(trainData, f = rep_len(1:n,nr))
 train.10 = split(trainData, sample(1:n, nr, replace =T ))
 for(i in 1:length(train.10)) {
   trainData1 = train.10[[i]]
   X = trainData1[,!names(trainData1) %in% c("Sale_Price","Sale_Price_Log","PID")]
   preds_train = predict(xgbFit, newdata = as.matrix(X))
-  print(RMSE(trainData1$Sale_Price_Log,preds_train))
+  xg.train.error[i] = (RMSE(trainData1$Sale_Price_Log,preds_train))
 }
 nr = nrow(test.y)
 test1Data = merge(testData, test.y, by = "PID")
@@ -338,9 +370,22 @@ for(i in 1:length(test.y.10)) {
   testData1 = test.y.10[[i]]
   X = testData1[,!names(testData1) %in% c("Sale_Price","Sale_Price_Log","PID","pred_sale_price")]
   preds_test <- predict(xgbFit, newdata = as.matrix(X))
-  print(RMSE(testData1$Sale_Price_Log,preds_test))
+  xg.test.error[i] = (RMSE(testData1$Sale_Price_Log,preds_test))
 }
+
 ```
+
+```{r}
+results = data.frame(cbind(lasso.train.error,lasso.test.error,xg.train.error,xg.test.error))
+colnames(results)=c("Lasso Train Error","Lasso Test Error","XGBoost Train Error","XGBoost Test Error")
+results
+```
+
 
 ## Discussion
 
+- There are two important observations we had during model building.
+
+  1. Without outlier removal Lasso Model didn't meet the criteria specified by the project requirement. When we handled the outlier data points by doing linear regression and using cooks distiance metrics then the performance was greatly improved and both train and test errors for Lasso Regression was below 10.
+  
+  2. The hyperparameter tuning for XGBoost runs too long and to tune Lambda, MaX_Depth and SubSample, took 11 hours to find the optimal value using my laptop.
