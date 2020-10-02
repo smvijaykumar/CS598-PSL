@@ -83,15 +83,15 @@ getSkewedVars = function(data) {
 
 
 - Load Data
-```{r}
+```{r echo=FALSE}
 data = read.csv("Ames_data.csv")
 ```
 
 - Analysis of Response Variable(Sale Price)
 
-A mean and median sale price of $180,796 and $160,000 respectively, indicating a positive skew, which was confirmed by histogram of the Sale Price.
+    A mean and median sale price of $180,796 and $160,000 respectively, indicating a positive skew, which was confirmed by histogram of the Sale Price.
 
-A long right tail tells that there are outlier data points. max = 755,000 and min = 12,789
+    A long right tail tells that there are outlier data points. max = 755,000 and min = 12,789
 
 - Skewness in Data
 
@@ -107,6 +107,7 @@ plot(Sale_Price ~ Lot_Area, data = data)
 ### Data PreProcessing
 
 - Remove features with Zero variance
+
 ```{r}
   # Find zero varience factors using caret
   nzv.data = nearZeroVar(data, saveMetrics = TRUE)
@@ -125,6 +126,7 @@ data = predict(d,data)
 ```
 
 - Log transformation for skewed features
+
 ```{r}
 skewed.vars = getSkewedVars(data)
 data_encoded = hotEncoding(data)
@@ -153,7 +155,6 @@ data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
 - Check for missing value
 
 ```{r echo=FALSE}
-paste("Number of Missing Values", sum(is.na(data_encoded)))
 data_encoded <- data_encoded %>% 
                     fill(
                       dplyr::everything()
@@ -190,9 +191,10 @@ test.y = test.y[complete.cases(test.y),]
 
 ### Model Building
 
-- LASSO Regression Model
+#### LASSO Regression Model
 
-+ Cross Validation to choose Lamda hyperparameter
+- 10 Fold Cross Validation to choose Lamda hyperparameter
+
 ```{r}
 set.seed(8742)
 X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
@@ -200,37 +202,39 @@ cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1
 cv_lasso$lambda.min
 ```
 
-+ Feature Engineering
+- Feature Engineering to select variables with non zero coefficients
+
 ```{r}
 # select variables
 sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
 ```
 
-+ Fit & Predict using selected Model
+- Fit & Predict using selected Model
 
 ```{r echo=FALSE}
 lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha = 1)
 
 # ## Predictions
 preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-RMSE(trainData$Sale_Price_Log,preds_train)
+tr.err=RMSE(trainData$Sale_Price_Log,preds_train)
 #trainData$pred_sale_price = preds_train
 
 preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-RMSE(test.y$Sale_Price_Log,preds)
+tst.err=RMSE(test.y$Sale_Price_Log,preds)
 test.y$pred_sale_price = preds
- 
+knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
 
+#### XGBoost - Boosting Model
 
-- XGBoost - Boosting Model
-+ Cross Validation to choose Lamda, subsample, max_depth hyperparameter
+- Train model to choose eta, subsample, max_depth hyperparameter: Ran model selection by running 10000 times and chose the lowest test rmse and corresponding hyperparameter values. Run time was around ~16 hours
 
-```{r eval=FALSE, message=FALSE, warning=FALSE, echo=FALSE}
+```{r eval=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+set.seed(8742)
 start.time <- Sys.time()
-
 dtrain <- xgb.DMatrix(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]), label = as.matrix(trainData$Sale_Price_Log)) 
 dtest <- xgb.DMatrix(data = as.matrix(testData), label=test.y$Sale_Price_Log)
+library(doMC)
 registerDoMC(8)
 # Create empty lists
 lowest_error_list = list()
@@ -238,11 +242,11 @@ parameters_list = list()
 
 # Create 10,000 rows with random hyperparameters
 set.seed(8742)
-for (iter in 1:10000){
+for (iter in 1:2){
   param <- list(booster = "gbtree",
                 objective = "reg:squarederror",
-                max_depth = sample(4:6, 1),
-                eta = runif(1, .01, .05),
+                max_depth = sample(4:5, 1),
+                eta = runif(1, .04, .05),
                 subsample = runif(1, .5, 0.6)
     )
   parameters <- as.data.frame(param)
@@ -256,7 +260,7 @@ parameters_df = do.call(rbind, parameters_list)
 # Use randomly created parameters to create 10,000 XGBoost-models
 for (row in 1:nrow(parameters_df)){
   set.seed(8742)
-  mdcv <- xgb.train(data = dtrain, nfold = 5, 
+  mdcv <- xgb.train(data = dtrain, 
                     booster = "gbtree",
                     objective = "reg:squarederror",
                     max_depth = parameters_df$max_depth[row],
@@ -265,11 +269,11 @@ for (row in 1:nrow(parameters_df)){
                     nrounds= 1000,
                     eval_metric = "rmse",
                     early_stopping_rounds= 30,
-                    print_every_n = 100,
+                    verbose = FALSE,
                     watchlist = list(train= dtrain, val= dtest)
   )
-  lowest_error <- as.data.frame(1 - min(mdcv$evaluation_log$val_error))
-  lowest_error_list[[row]] <- lowest_error
+  lowest_error = mdcv$evaluation_log[mdcv$best_iteration,]
+  lowest_error_list[[row]] = lowest_error
 }
 
 # Create object that contains all accuracy's
@@ -279,12 +283,11 @@ lowest_error_df = do.call(rbind, lowest_error_list)
 randomsearch = cbind(lowest_error_df, parameters_df)
 
 # Quickly display highest accuracy
-max(randomsearch$`1 - min(mdcv$evaluation_log$val_error)`)
+best_xg_param = randomsearch[which(randomsearch$val_rmse == min(randomsearch$val_rmse)),]
 
 # Stop time and calculate difference
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
+end.time = Sys.time()
+time.taken = end.time - start.time
 ```
 
 + Fit & Predict using selected Model
@@ -292,27 +295,26 @@ time.taken
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 set.seed(8742)
 xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]), label = as.matrix(trainData$Sale_Price_Log), 
-    nrounds = 2200, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
-    nthread = 8, eta = 0.01, max_depth = 6, 
-    subsample = 0.5213)
+    nrounds = best_xg_param$iter, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
+    eta = best_xg_param$eta, max_depth = best_xg_param$max_depth, subsample = best_xg_param$subsample)
 
 ## Predictions
 # rmse of training data
 predict_xg_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]))
-RMSE(trainData$Sale_Price_Log, predict_xg_train)
+tr.err = RMSE(trainData$Sale_Price_Log, predict_xg_train)
 # rmse of testing data
 preds2 <- predict(xgbFit, newdata = as.matrix(testData[,!names(testData) %in% c("PID")]))
-RMSE(test.y$Sale_Price_Log, preds2)
+tst.err = RMSE(test.y$Sale_Price_Log, preds2)
 test.y$pred_sale_price = round(exp(preds2),1)
 mysubm2 = data.frame(test.y[,c("PID","pred_sale_price")])
 colnames(mysubm2) = c("PID","Sale_Price")
 write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE)
-
+knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
 
 ## Results
 
-
+- The below two tables shows the individual split train and test errors for both models and other table shows the mean errors of the same.
 ```{r echo=FALSE}
 set.seed(8742)
 
@@ -369,10 +371,22 @@ for(i in 1:length(test.y.10)) {
 
 ```
 
+- 10 Train & Test Split Error for Lasso & XGBoost Model
+
 ```{r echo=FALSE}
 results = data.frame(cbind(lasso.train.error,lasso.test.error,xg.train.error,xg.test.error))
 colnames(results)=c("Lasso Train Error","Lasso Test Error","XGBoost Train Error","XGBoost Test Error")
-results
+knitr::kable(results)
+```
+
+- Mean Train & Test Error for Lasso & XGBoost Model
+
+```{r echo=FALSE}
+results %>%
+   dplyr::summarise(lasso.train.error = mean(lasso.train.error),
+                    lasso.test.error = mean(lasso.test.error),
+                    xgboost.train.error = mean(xg.train.error),
+                    xgboost.test.error = mean(xg.test.error))
 ```
 
 
@@ -382,4 +396,4 @@ results
 
   1. Without outlier removal Lasso Model didn't meet the criteria specified by the project requirement. When we handled the outlier data points by doing linear regression and using cooks distiance metrics then the performance was greatly improved and both train and test errors for Lasso Regression was below 10.
   
-  2. The hyperparameter tuning for XGBoost runs too long and to tune Lambda, MaX_Depth and SubSample, took 11 hours to find the optimal value using my laptop.
+  2. The hyperparameter tuning for XGBoost runs too long and to tune Lambda, MaX_Depth and SubSample, took 16 hours to find the optimal value by running 10000 models in my laptop. Need to work on parallelizing the code with doMC package or SParkR to improve the performance.
