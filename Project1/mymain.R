@@ -135,8 +135,8 @@ write.csv(mysubm1, file = "mysubmission1.txt", row.names = FALSE)
 set.seed(8742)
 xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]),
                  label = as.matrix(trainData$Sale_Price_Log), 
-                 nrounds = 2200, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
-                 nthread = 8, eta = 0.01, max_depth = 6, subsample = 0.5213)
+                 nrounds = 1000, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
+                 eta = 0.04864, max_depth = 4, subsample = 0.5959)
 ## Predictions
 # rmse of training data
 predict_rf_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]))
@@ -159,4 +159,4 @@ paste("My Submission1 RMSE:",sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sal
 pred <- read.csv("mysubmission2.txt")
 names(test.y)[2] <- "True_Sale_Price"
 pred <- merge(pred, test.y, by="PID")
-paste("My Submission1 RMSE:",sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2)))
+paste("My Submission2 RMSE:",sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2)))
