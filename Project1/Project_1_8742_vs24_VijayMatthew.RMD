@@ -40,7 +40,7 @@ Finally we need to create two output files with the predictions prices from each
 ## Method
 
 ### Utility Functions
-```{r}
+```{r echo=FALSE}
 
 hotEncoding = function(dataset) {
   dummies_model = dummyVars(Sale_Price ~ . -PID, data=dataset)
@@ -93,15 +93,12 @@ A mean and median sale price of $180,796 and $160,000 respectively, indicating a
 
 A long right tail tells that there are outlier data points. max = 755,000 and min = 12,789
 
-```{r}
-summary(data$Sale_Price)
-hist(data$Sale_Price,col = "blue", main = "Histogram of Sale Price", xlab = "Sale Price")
-```
-
 - Skewness in Data
 
-```{r}
-par(mfrow=c(1,3))
+```{r echo=FALSE}
+par(mfrow=c(1,4))
+hist(data$Sale_Price,col = "blue", main = "Histogram of Sale Price", xlab = "Sale Price")
+
 plot(Sale_Price ~ Gr_Liv_Area, data = data)
 plot(Sale_Price ~ Garage_Area, data = data)
 plot(Sale_Price ~ Lot_Area, data = data)
@@ -129,10 +126,8 @@ data = predict(d,data)
 
 - Log transformation for skewed features
 ```{r}
-
 skewed.vars = getSkewedVars(data)
 data_encoded = hotEncoding(data)
-
 for(i in skewed.vars){
   if(0 %in% data_encoded[, i]){
     data_encoded[,i] <- log(1+data_encoded[,i])
@@ -141,11 +136,9 @@ for(i in skewed.vars){
     data_encoded[,i] <- log(data_encoded[,i])
   }
 }
-
 data_encoded$PID = data$PID
 data_encoded$Sale_Price = data$Sale_Price
 data_encoded$Sale_Price_Log = log(data$Sale_Price)
-
 ```
 
 - Remove Outlier Data points
@@ -159,7 +152,7 @@ data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
 
 - Check for missing value
 
-```{r}
+```{r echo=FALSE}
 paste("Number of Missing Values", sum(is.na(data_encoded)))
 data_encoded <- data_encoded %>% 
                     fill(
@@ -171,8 +164,9 @@ paste("Number of Missing Values", sum(is.na(data_encoded)))
 ```
 
 - Train and Test Data Split
+    Split the dataset into Train and Test by using given test project ids.
 
-```{r}
+```{r echo=FALSE}
 
 testIDs <- read.table("project1_testIDs.dat")
 j <- 2
@@ -214,7 +208,7 @@ sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
 
 + Fit & Predict using selected Model
 
-```{r}
+```{r echo=FALSE}
 lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha = 1)
 
 # ## Predictions
@@ -232,7 +226,7 @@ test.y$pred_sale_price = preds
 - XGBoost - Boosting Model
 + Cross Validation to choose Lamda, subsample, max_depth hyperparameter
 
-```{r eval=FALSE, message=FALSE, warning=FALSE}
+```{r eval=FALSE, message=FALSE, warning=FALSE, echo=FALSE}
 start.time <- Sys.time()
 
 dtrain <- xgb.DMatrix(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]), label = as.matrix(trainData$Sale_Price_Log)) 
@@ -295,7 +289,7 @@ time.taken
 
 + Fit & Predict using selected Model
 
-```{r message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 set.seed(8742)
 xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]), label = as.matrix(trainData$Sale_Price_Log), 
     nrounds = 2200, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
@@ -319,7 +313,7 @@ write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE)
 ## Results
 
 
-```{r}
+```{r echo=FALSE}
 set.seed(8742)
 
 n = 10
@@ -348,7 +342,7 @@ for(i in 1:length(test.y.10)) {
 ```
 
 
-```{r}
+```{r echo=FALSE}
 set.seed(8742)
 n = 10
 nr = nrow(trainData)
@@ -375,7 +369,7 @@ for(i in 1:length(test.y.10)) {
 
 ```
 
-```{r}
+```{r echo=FALSE}
 results = data.frame(cbind(lasso.train.error,lasso.test.error,xg.train.error,xg.test.error))
 colnames(results)=c("Lasso Train Error","Lasso Test Error","XGBoost Train Error","XGBoost Test Error")
 results
