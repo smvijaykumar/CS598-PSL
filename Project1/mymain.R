@@ -11,6 +11,7 @@ suppressPackageStartupMessages({
   library(e1071)
 })
 
+
 hotEncoding = function(dataset) {
   dummies_model = dummyVars(Sale_Price ~ . -PID, data=dataset)
   dataset = predict(dummies_model, newdata = dataset)
@@ -22,9 +23,9 @@ RMSE = function(actual, predicted) {
 }
 
 
-removeVars = function(data) {
+removeVars = function(data,remove.var) {
   
-  remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude',"Lot_Frontage")
+  #remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude')
   data[,!names(data) %in% remove.var]
 }
 
@@ -37,8 +38,7 @@ getSkewedVars = function(data) {
         if(length(levels(as.factor(data[,i]))) > 10){
           # Enters this block if variable is non-categorical
           skewVal <- skewness(data[,i])
-#          print(paste(i, skewVal, sep = ": "))
-          if(abs(skewVal) > 0.5){
+          if(abs(skewVal) > 0.25){
             skewedVars <- c(skewedVars, i)
           }
         }
@@ -53,13 +53,19 @@ getSkewedVars = function(data) {
 data = read.csv("Ames_data.csv")
 
 #Data Preprocessing 
-data = removeVars(data)
+# Find zero varience factors using caret
+nzv.data = nearZeroVar(data, saveMetrics = TRUE)
+
+# Remove zero variance factors
+drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
+remove.var = c(drop.cols, "Longitude","Latitude")
+data = removeVars(data,remove.var)
+
 d <- preProcess(data, "medianImpute")
 data = predict(d,data)
 
 skewed.vars = getSkewedVars(data)
 data_encoded = hotEncoding(data)
-
 for(i in skewed.vars){
   if(0 %in% data_encoded[, i]){
     data_encoded[,i] <- log(1+data_encoded[,i])
@@ -68,23 +74,18 @@ for(i in skewed.vars){
     data_encoded[,i] <- log(data_encoded[,i])
   }
 }
-
 data_encoded$PID = data$PID
 data_encoded$Sale_Price = data$Sale_Price
 data_encoded$Sale_Price_Log = log(data$Sale_Price)
 
-fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area + BsmtFin_SF_2 + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF + Open_Porch_SF + Enclosed_Porch + Three_season_porch + Screen_Porch + Misc_Val, data = data_encoded)
+fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
 fit_cd = cooks.distance(fit)
 data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
 
-
-paste("Number of Missing Values", sum(is.na(data_encoded)))
 data_encoded <- data_encoded %>% 
   fill(
     dplyr::everything()
   )
-# counting number of missing values
-paste("Number of Missing Values", sum(is.na(data_encoded)))
 
 
 testIDs <- read.table("project1_testIDs.dat")
@@ -112,7 +113,6 @@ set.seed(8742)
 X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
 
 cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1)
-cv_lasso$lambda.min
 
 # select variables
 sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
@@ -133,16 +133,15 @@ colnames(mysubm1) = c("PID","Sale_Price")
 write.csv(mysubm1, file = "mysubmission1.txt", row.names = FALSE)
 
 set.seed(8742)
-xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]),
-                 label = as.matrix(trainData$Sale_Price_Log), 
+xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]), label = as.matrix(trainData$Sale_Price_Log), 
                  nrounds = 1000, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
                  eta = 0.04864, max_depth = 4, subsample = 0.5959)
 ## Predictions
 # rmse of training data
-predict_rf_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","pred_sale_price")]))
+predict_rf_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]))
 paste("Model2 XGBoost Train RMSE:",RMSE(trainData$Sale_Price_Log, predict_rf_train))
 # rmse of testing data
-preds2 <- predict(xgbFit, newdata = as.matrix(testData))
+preds2 <- predict(xgbFit, newdata = as.matrix(testData[,!names(testData) %in% c("PID")]))
 paste("Model2 XGBoost Test RMSE:",RMSE(test.y$Sale_Price_Log, preds2))
 test.y$pred_sale_price = round(exp(preds2),1)
 
