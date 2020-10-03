@@ -38,14 +38,28 @@ getSkewedVars = function(data) {
         if(length(levels(as.factor(data[,i]))) > 10){
           # Enters this block if variable is non-categorical
           skewVal <- skewness(data[,i])
+          paste(names(data[,i]),skewVal)
           if(abs(skewVal) > 0.5){
             skewedVars <- c(skewedVars, i)
+            
           }
         }
       }
     }
   }
   skewedVars[-1]
+}
+
+winsorize = function(data) {
+  winsor.vars <- c("Lot_Frontage", "Lot_Area", "Mas_Vnr_Area", "BsmtFin_SF_2", "Bsmt_Unf_SF", "Total_Bsmt_SF", "Second_Flr_SF", 'First_Flr_SF', "Gr_Liv_Area", "Garage_Area", "Wood_Deck_SF", "Open_Porch_SF", "Enclosed_Porch", "Three_season_porch", "Screen_Porch", "Misc_Val")
+  quan.value <- 0.95
+  for(var in winsor.vars){
+    tmp <- data[, var]
+    myquan <- quantile(tmp, probs = quan.value, na.rm = TRUE)
+    tmp[tmp > myquan] <- myquan
+    data[, var] <- tmp
+  }
+  data
 }
 
 
@@ -56,17 +70,17 @@ myPreProcess = function(data) {
   
   d <- preProcess(data, "medianImpute")
   data = predict(d,data)
-  
+  data = winsorize(data)
   skewed.vars = getSkewedVars(data)
   data_encoded = hotEncoding(data)
-  for(i in skewed.vars){
-    if(0 %in% data_encoded[, i]){
-      data_encoded[,i] <- log(1+data_encoded[,i])
-    }
-    else{
-      data_encoded[,i] <- log(data_encoded[,i])
-    }
-  }
+  # for(i in skewed.vars){
+  #   if(0 %in% data_encoded[, i]){
+  #     data_encoded[,i] <- log(1+data_encoded[,i])
+  #   }
+  #   else{
+  #     data_encoded[,i] <- log(data_encoded[,i])
+  #   }
+  # }
   nzv.data = nearZeroVar(data_encoded, saveMetrics = TRUE)
   
   # Remove zero variance factors
@@ -94,7 +108,7 @@ myPreProcess = function(data) {
 
 data = read.csv("Ames_data.csv")
 testIDs <- read.table("project1_testIDs.dat")
-j <- 3
+j <- 4
 train <- data[-testIDs[,j], ]
 test <- data[testIDs[,j], ]
 
@@ -134,10 +148,11 @@ lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha =
 # ## Predictions
 preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
 paste("Model1 Lasso Train RMSE:",RMSE(trainData$Sale_Price_Log,preds_train))
-#trainData$pred_sale_price = preds_train
+#trainData$pred_sale_price = preds_trai
 
 missing = setdiff(sel.vars,names(testData))
-testData[missing] = 0
+if(length(missing) > 0)
+  testData[missing] = 0
 preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
 paste("Model1:Lasso Test RMSE:",RMSE(testData$Sale_Price_Log,preds))
 

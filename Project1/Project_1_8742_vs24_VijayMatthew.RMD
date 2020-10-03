@@ -43,7 +43,7 @@ Finally we need to create two output files with the predictions prices from each
 ```{r echo=FALSE}
 
 hotEncoding = function(dataset) {
-  dummies_model = dummyVars(Sale_Price ~ . -PID, data=dataset)
+  dummies_model = dummyVars(Sale_Price ~ ., data=dataset)
   dataset = predict(dummies_model, newdata = dataset)
   dataset = data.frame(dataset)
 }
@@ -54,9 +54,21 @@ RMSE = function(actual, predicted) {
 
 
 removeVars = function(data,remove.var) {
-
+  
   #remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude')
   data[,!names(data) %in% remove.var]
+}
+
+winsorize = function(data) {
+  winsor.vars <- c("Lot_Frontage", "Lot_Area", "Mas_Vnr_Area", "BsmtFin_SF_2", "Bsmt_Unf_SF", "Total_Bsmt_SF", "Second_Flr_SF", 'First_Flr_SF', "Gr_Liv_Area", "Garage_Area", "Wood_Deck_SF", "Open_Porch_SF", "Enclosed_Porch", "Three_season_porch", "Screen_Porch", "Misc_Val")
+  quan.value <- 0.95
+  for(var in winsor.vars){
+    tmp <- data[, var]
+    myquan <- quantile(tmp, probs = quan.value, na.rm = TRUE)
+    tmp[tmp > myquan] <- myquan
+    data[, var] <- tmp
+  }
+  data
 }
 
 getSkewedVars = function(data) {
@@ -68,7 +80,7 @@ getSkewedVars = function(data) {
         if(length(levels(as.factor(data[,i]))) > 10){
           # Enters this block if variable is non-categorical
           skewVal <- skewness(data[,i])
-          if(abs(skewVal) > 0.25){
+          if(abs(skewVal) > 0.5){
             skewedVars <- c(skewedVars, i)
           }
         }
@@ -76,6 +88,43 @@ getSkewedVars = function(data) {
     }
   }
   skewedVars[-1]
+}
+
+myPreProcess = function(data) {
+
+  d <- preProcess(data, "medianImpute")
+  data = predict(d,data)
+  data = winsorize(data)
+  #skewed.vars = getSkewedVars(data)
+  data_encoded = hotEncoding(data)
+  # for(i in skewed.vars){
+  #   if(0 %in% data_encoded[, i]){
+  #     data_encoded[,i] <- log(1+data_encoded[,i])
+  #   }
+  #   else{
+  #     data_encoded[,i] <- log(data_encoded[,i])
+  #   }
+  # }
+  nzv.data = nearZeroVar(data_encoded, saveMetrics = TRUE)
+  
+  # Remove zero variance factors
+  drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
+  remove.var = c(drop.cols, "Longitude","Latitude")
+  data_encoded = removeVars(data_encoded,remove.var)
+  
+  data_encoded$PID = data$PID
+  data_encoded$Sale_Price = data$Sale_Price
+  data_encoded$Sale_Price_Log = log(data$Sale_Price)
+  
+  fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
+  fit_cd = cooks.distance(fit)
+  data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
+  
+  data_encoded <- data_encoded %>% 
+    fill(
+      dplyr::everything()
+    )
+  data_encoded
 }
 ```
 
@@ -108,11 +157,9 @@ plot(Sale_Price ~ Lot_Area, data = data)
 
 - Remove features with Zero variance
 
-```{r}
-  # Find zero varience factors using caret
+```{r eval=FALSE}
+  # Find zero varience factors using caret and remove
   nzv.data = nearZeroVar(data, saveMetrics = TRUE)
-
-  # Remove zero variance factors
   drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
   remove.var = c(drop.cols, "Longitude","Latitude")
   data = removeVars(data,remove.var)
@@ -120,14 +167,14 @@ plot(Sale_Price ~ Lot_Area, data = data)
 
 - Impute Missing Values with Preprocess using Caret package
 
-```{r}
+```{r eval=FALSE}
 d <- preProcess(data, "medianImpute")
 data = predict(d,data)
 ```
 
 - Log transformation for skewed features
 
-```{r}
+```{r eval=FALSE}
 skewed.vars = getSkewedVars(data)
 data_encoded = hotEncoding(data)
 for(i in skewed.vars){
@@ -145,7 +192,7 @@ data_encoded$Sale_Price_Log = log(data$Sale_Price)
 
 - Remove Outlier Data points
 
-```{r}
+```{r eval=FALSE}
 fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
 fit_cd = cooks.distance(fit)
 data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
@@ -154,7 +201,7 @@ data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
 
 - Check for missing value
 
-```{r echo=FALSE}
+```{r echo=FALSE, eval=FALSE}
 data_encoded <- data_encoded %>% 
                     fill(
                       dplyr::everything()
@@ -169,14 +216,14 @@ paste("Number of Missing Values", sum(is.na(data_encoded)))
 
 ```{r echo=FALSE}
 
+data = read.csv("Ames_data.csv")
 testIDs <- read.table("project1_testIDs.dat")
-j <- 2
-train <- data_encoded[-testIDs[,j], ]
-test <- data_encoded[testIDs[,j], ]
-#test.y <- test[, c(1, 136,137)]
-#test <- test[, -c(136,137)]
-test.y <- test[, c("PID", "Sale_Price","Sale_Price_Log")]
-test <- test[, !names(test) %in% c("Sale_Price","Sale_Price_Log")]
+j <- 3
+train <- data[-testIDs[,j], ]
+test <- data[testIDs[,j], ]
+
+test.y <- test[, c("PID", "Sale_Price")]
+test <- test[, !names(test) %in% c("Sale_Price")]
 
 write.csv(train,"train.csv",row.names=FALSE)
 write.csv(test, "test.csv",row.names=FALSE)
@@ -184,8 +231,10 @@ write.csv(test.y,"test_y.csv",row.names=FALSE)
 
 trainData <- read.csv("train.csv")
 testData <- read.csv("test.csv")
-testData = testData[complete.cases(testData),]
-test.y = test.y[complete.cases(test.y),]
+
+trainData = myPreProcess(trainData)
+testData1 = merge(testData, test.y, by = "PID")
+testData = myPreProcess(testData1)
 
 ```
 
@@ -207,21 +256,24 @@ cv_lasso$lambda.min
 ```{r}
 # select variables
 sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
+sel.vars = names(X[,sel.vars])
 ```
 
 - Fit & Predict using selected Model
 
 ```{r echo=FALSE}
 lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha = 1)
-
+train_lasso_vars = sel.vars
 # ## Predictions
 preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
 tr.err=RMSE(trainData$Sale_Price_Log,preds_train)
 #trainData$pred_sale_price = preds_train
 
+missing = setdiff(sel.vars,names(testData))
+testData[missing] = 0
 preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-tst.err=RMSE(test.y$Sale_Price_Log,preds)
-test.y$pred_sale_price = preds
+tst.err=RMSE(testData$Sale_Price_Log,preds)
+testData$pred_sale_price = preds
 knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
 
@@ -232,20 +284,20 @@ knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```{r eval=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
 set.seed(8742)
 start.time <- Sys.time()
-dtrain <- xgb.DMatrix(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]), label = as.matrix(trainData$Sale_Price_Log)) 
-dtest <- xgb.DMatrix(data = as.matrix(testData), label=test.y$Sale_Price_Log)
-library(doMC)
-registerDoMC(8)
+X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]
+dtrain <- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log)) 
+dtest <- xgb.DMatrix(data = as.matrix(testData[,names(X)]), label=testData$Sale_Price_Log)
+
 # Create empty lists
 lowest_error_list = list()
 parameters_list = list()
 
 # Create 10,000 rows with random hyperparameters
 set.seed(8742)
-for (iter in 1:2){
+for (iter in 1:10){
   param <- list(booster = "gbtree",
                 objective = "reg:squarederror",
-                max_depth = sample(4:5, 1),
+                max_depth = sample(4:6, 1),
                 eta = runif(1, .04, .05),
                 subsample = runif(1, .5, 0.6)
     )
@@ -294,21 +346,25 @@ time.taken = end.time - start.time
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 set.seed(8742)
-xgbFit = xgboost(data = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]), label = as.matrix(trainData$Sale_Price_Log), 
-    nrounds = best_xg_param$iter, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
-    eta = best_xg_param$eta, max_depth = best_xg_param$max_depth, subsample = best_xg_param$subsample)
-
+X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
+train_xg_vars = names(X)
+xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log), 
+                 nrounds = 1000, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
+                 eta = 0.0474239, max_depth = 4, subsample = 0.541795)
 ## Predictions
 # rmse of training data
-predict_xg_train = predict(xgbFit, newdata = as.matrix(trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]))
-tr.err = RMSE(trainData$Sale_Price_Log, predict_xg_train)
+predict_rf_train = predict(xgbFit, newdata = as.matrix(X))
+tr.err = RMSE(trainData$Sale_Price_Log, predict_rf_train)
 # rmse of testing data
-preds2 <- predict(xgbFit, newdata = as.matrix(testData[,!names(testData) %in% c("PID")]))
-tst.err = RMSE(test.y$Sale_Price_Log, preds2)
-test.y$pred_sale_price = round(exp(preds2),1)
-mysubm2 = data.frame(test.y[,c("PID","pred_sale_price")])
+missing = setdiff(names(trainData),names(testData))
+testData[missing] = 0
+preds2 <- predict(xgbFit, newdata = as.matrix(testData[,names(X)]))
+tst.err = RMSE(testData$Sale_Price_Log, preds2)
+
+mysubm2 = data.frame(PID=testData[,c("PID")],Sale_Price=round(exp(preds2),1))
 colnames(mysubm2) = c("PID","Sale_Price")
-write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE)
+write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE, quote = FALSE)
+
 knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
 
@@ -322,23 +378,29 @@ n = 10
 nr = nrow(trainData)
 lasso.train.error = rep(0,n)
 lasso.test.error = rep(0,n)
-#train.10 = split(trainData, f = rep_len(1:n,nr))
-train.10 = split(trainData, sample(1:n, nr, replace =T ))
-for(i in 1:length(train.10)) {
-  trainData1 = train.10[[i]]
-  X = trainData1[,!names(trainData1) %in% c("Sale_Price","Sale_Price_Log","PID")]
-  preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-  lasso.train.error[i] = (RMSE(trainData1$Sale_Price_Log,preds_train))
-}
-nr = nrow(test.y)
-test1Data = merge(testData, test.y, by = "PID")
-test.y.10 = split(test1Data, sample(1:n, nr, replace = TRUE ))
-#test.y.10 = split(test1Data, f= rep_len(1:n,nr))
-for(i in 1:length(test.y.10)) {
-  testData1 = test.y.10[[i]]
-  X = testData1[,!names(testData1) %in% c("Sale_Price","Sale_Price_Log","PID","pred_sale_price")]
-  preds_test<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
-  lasso.test.error[i] = (RMSE(testData1$Sale_Price_Log,preds_test))
+
+for(j in 1:n) {
+  train <- data[-testIDs[,j], ]
+  test <- data[testIDs[,j], ]
+  
+  test.y <- test[, c("PID", "Sale_Price")]
+  test <- test[, !names(test) %in% c("Sale_Price")]
+  
+  trainData = myPreProcess(train)
+  testData1 = merge(test, test.y, by = "PID")
+  testData = myPreProcess(testData1)
+  
+  missing = setdiff(train_lasso_vars,names(trainData))
+  trainData[missing] = 0
+    
+  X = trainData[,train_lasso_vars]
+  preds_train<-predict(lasso_mod,newx=as.matrix(X),s=cv_lasso$lambda.min, alpha = 1)
+  lasso.train.error[j] = (RMSE(trainData$Sale_Price_Log,preds_train))
+
+  missing = setdiff(train_lasso_vars,names(testData))
+  testData[missing] = 0
+  preds_test<-predict(lasso_mod,newx=as.matrix(testData[,train_lasso_vars]),s=cv_lasso$lambda.min, alpha = 1)
+  lasso.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
 }
 
 ```
@@ -350,23 +412,32 @@ n = 10
 nr = nrow(trainData)
 xg.train.error = rep(0,n)
 xg.test.error = rep(0,n)
-#train.10 = split(trainData, f = rep_len(1:n,nr))
-train.10 = split(trainData, sample(1:n, nr, replace =T ))
-for(i in 1:length(train.10)) {
-  trainData1 = train.10[[i]]
-  X = trainData1[,!names(trainData1) %in% c("Sale_Price","Sale_Price_Log","PID")]
+
+for(j in 1:n) {
+  train <- data[-testIDs[,j], ]
+  test <- data[testIDs[,j], ]
+  
+  test.y <- test[, c("PID", "Sale_Price")]
+  test <- test[, !names(test) %in% c("Sale_Price")]
+  
+  trainData = myPreProcess(train)
+  testData1 = merge(test, test.y, by = "PID")
+  testData = myPreProcess(testData1)
+  
+  missing = setdiff(train_xg_vars,names(trainData))
+  trainData[missing] = 0
+    
+  X = trainData[,train_xg_vars]
   preds_train = predict(xgbFit, newdata = as.matrix(X))
-  xg.train.error[i] = (RMSE(trainData1$Sale_Price_Log,preds_train))
-}
-nr = nrow(test.y)
-test1Data = merge(testData, test.y, by = "PID")
-test.y.10 = split(test1Data, sample(1:n, nr, replace = TRUE ))
-#test.y.10 = split(test1Data, f= rep_len(1:n,nr))
-for(i in 1:length(test.y.10)) {
-  testData1 = test.y.10[[i]]
-  X = testData1[,!names(testData1) %in% c("Sale_Price","Sale_Price_Log","PID","pred_sale_price")]
-  preds_test <- predict(xgbFit, newdata = as.matrix(X))
-  xg.test.error[i] = (RMSE(testData1$Sale_Price_Log,preds_test))
+  xg.train.error[j] = (RMSE(trainData$Sale_Price_Log,preds_train))
+  
+  # rmse of testing data
+  missing = setdiff(names(X),names(testData))
+  testData[missing] = 0
+  
+  X = testData[,names(X)]
+  preds_test = predict(xgbFit, newdata = as.matrix(X))
+  xg.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
 }
 
 ```
