@@ -145,12 +145,74 @@ mysubm1 = data.frame(PID=testData[,"PID"],Sale_Price=round(exp(preds),1))
 colnames(mysubm1) = c("PID","Sale_Price")
 write.csv(mysubm1, file = "mysubmission1.txt", row.names = FALSE,quote = FALSE)
 
+# set.seed(8742)
+# start.time <- Sys.time()
+# X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]
+# dtrain <- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log)) 
+# dtest <- xgb.DMatrix(data = as.matrix(testData[,names(X)]), label=testData$Sale_Price_Log)
+# 
+# # Create empty lists
+# lowest_error_list = list()
+# parameters_list = list()
+# 
+# # Create 10,000 rows with random hyperparameters
+# set.seed(8742)
+# for (iter in 1:10){
+#   param <- list(booster = "gbtree",
+#                 objective = "reg:squarederror",
+#                 max_depth = sample(4:6, 1),
+#                 eta = runif(1, .04, .05),
+#                 subsample = runif(1, .5, 0.6)
+#   )
+#   parameters <- as.data.frame(param)
+#   parameters_list[[iter]] <- parameters
+# }
+# 
+# # Create object that contains all randomly created hyperparameters
+# parameters_df = do.call(rbind, parameters_list)
+# 
+# 
+# # Use randomly created parameters to create 10,000 XGBoost-models
+# for (row in 1:nrow(parameters_df)){
+#   set.seed(8742)
+#   mdcv <- xgb.train(data = dtrain, 
+#                     booster = "gbtree",
+#                     objective = "reg:squarederror",
+#                     max_depth = parameters_df$max_depth[row],
+#                     eta = parameters_df$eta[row],
+#                     subsample = parameters_df$subsample[row],
+#                     nrounds= 1000,
+#                     eval_metric = "rmse",
+#                     early_stopping_rounds= 30,
+#                     verbose = FALSE,
+#                     watchlist = list(train= dtrain, val= dtest)
+#   )
+#   lowest_error = mdcv$evaluation_log[mdcv$best_iteration,]
+#   lowest_error_list[[row]] = lowest_error
+# }
+# 
+# # Create object that contains all accuracy's
+# lowest_error_df = do.call(rbind, lowest_error_list)
+# 
+# # Bind columns of accuracy values and random hyperparameter values
+# randomsearch = cbind(lowest_error_df, parameters_df)
+# 
+# # Quickly display highest accuracy
+# best_xg_param = randomsearch[which(randomsearch$val_rmse == min(randomsearch$val_rmse)),]
+# best_xg_param
+# # Stop time and calculate difference
+# end.time = Sys.time()
+# time.taken = end.time - start.time
+# time.taken
+
+
+
 set.seed(8742)
 X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
 
 xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log), 
                  nrounds = 1000, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
-                 eta = 0.01, max_depth = 6, subsample = 0.5)
+                 eta = 0.0474239, max_depth = 4, subsample = 0.541795)
 ## Predictions
 # rmse of training data
 predict_rf_train = predict(xgbFit, newdata = as.matrix(X))
@@ -175,3 +237,5 @@ pred <- read.csv("mysubmission2.txt")
 names(test.y)[2] <- "True_Sale_Price"
 pred <- merge(pred, test.y, by="PID")
 paste("My Submission2 RMSE:",sqrt(mean((log(pred$Sale_Price) - log(pred$True_Sale_Price))^2)))
+
+
