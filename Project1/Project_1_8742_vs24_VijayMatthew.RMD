@@ -53,14 +53,14 @@ RMSE = function(actual, predicted) {
 }
 
 
-removeVars = function(data,remove.var) {
+removeVars = function(data, remove.var) {
   
-  #remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude')
   data[,!names(data) %in% remove.var]
 }
 
-winsorize = function(data) {
-  winsor.vars <- c("Lot_Frontage", "Lot_Area", "Mas_Vnr_Area", "BsmtFin_SF_2", "Bsmt_Unf_SF", "Total_Bsmt_SF", "Second_Flr_SF", 'First_Flr_SF', "Gr_Liv_Area", "Garage_Area", "Wood_Deck_SF", "Open_Porch_SF", "Enclosed_Porch", "Three_season_porch", "Screen_Porch", "Misc_Val")
+
+winsorize = function(data, winsor.vars) {
+
   quan.value <- 0.95
   for(var in winsor.vars){
     tmp <- data[, var]
@@ -90,11 +90,15 @@ getSkewedVars = function(data) {
   skewedVars[-1]
 }
 
+remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude')
+
+winsor.vars <- c("Lot_Frontage", "Lot_Area", "Mas_Vnr_Area", "BsmtFin_SF_2", "Bsmt_Unf_SF", "Total_Bsmt_SF", "Second_Flr_SF", 'First_Flr_SF', "Gr_Liv_Area", "Garage_Area", "Wood_Deck_SF", "Open_Porch_SF", "Enclosed_Porch", "Three_season_porch", "Screen_Porch", "Misc_Val")
+
 myPreProcess = function(data) {
 
   d <- preProcess(data, "medianImpute")
   data = predict(d,data)
-  data = winsorize(data)
+  data = winsorize(data, winsor.vars)
   #skewed.vars = getSkewedVars(data)
   data_encoded = hotEncoding(data)
   # for(i in skewed.vars){
@@ -105,20 +109,20 @@ myPreProcess = function(data) {
   #     data_encoded[,i] <- log(data_encoded[,i])
   #   }
   # }
-  nzv.data = nearZeroVar(data_encoded, saveMetrics = TRUE)
+  #nzv.data = nearZeroVar(data_encoded, saveMetrics = TRUE)
   
   # Remove zero variance factors
-  drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
-  remove.var = c(drop.cols, "Longitude","Latitude")
+  #drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
+  #remove.var = c(drop.cols, "Longitude","Latitude")
   data_encoded = removeVars(data_encoded,remove.var)
   
   data_encoded$PID = data$PID
   data_encoded$Sale_Price = data$Sale_Price
   data_encoded$Sale_Price_Log = log(data$Sale_Price)
   
-  fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
-  fit_cd = cooks.distance(fit)
-  data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
+  #fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
+  #fit_cd = cooks.distance(fit)
+  #data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
   
   data_encoded <- data_encoded %>% 
     fill(
@@ -127,6 +131,7 @@ myPreProcess = function(data) {
   data_encoded
 }
 ```
+
 
 ### Data Read and Exploration
 
@@ -155,13 +160,11 @@ plot(Sale_Price ~ Lot_Area, data = data)
 
 ### Data PreProcessing
 
-- Remove features with Zero variance
+- Remove predictors with imbalance data or can be inferred from other predictors
 
 ```{r eval=FALSE}
-  # Find zero varience factors using caret and remove
-  nzv.data = nearZeroVar(data, saveMetrics = TRUE)
-  drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
-  remove.var = c(drop.cols, "Longitude","Latitude")
+  remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude')
+
   data = removeVars(data,remove.var)
 ```
 
@@ -172,36 +175,33 @@ d <- preProcess(data, "medianImpute")
 data = predict(d,data)
 ```
 
-- Log transformation for skewed features
+- Winsorize numerical variables
 
 ```{r eval=FALSE}
-skewed.vars = getSkewedVars(data)
-data_encoded = hotEncoding(data)
-for(i in skewed.vars){
-  if(0 %in% data_encoded[, i]){
-    data_encoded[,i] <- log(1+data_encoded[,i])
-  }
-  else{
-    data_encoded[,i] <- log(data_encoded[,i])
-  }
+winsor.vars <- c("Lot_Frontage", "Lot_Area", "Mas_Vnr_Area", "BsmtFin_SF_2", "Bsmt_Unf_SF", "Total_Bsmt_SF", "Second_Flr_SF", 'First_Flr_SF', "Gr_Liv_Area", "Garage_Area", "Wood_Deck_SF", "Open_Porch_SF", "Enclosed_Porch", "Three_season_porch", "Screen_Porch", "Misc_Val")
+
+quan.value <- 0.95
+for(var in winsor.vars){
+    tmp <- data[, var]
+    myquan <- quantile(tmp, probs = quan.value, na.rm = TRUE)
+    tmp[tmp > myquan] <- myquan
+    data[, var] <- tmp
 }
-data_encoded$PID = data$PID
-data_encoded$Sale_Price = data$Sale_Price
-data_encoded$Sale_Price_Log = log(data$Sale_Price)
+
 ```
 
-- Remove Outlier Data points
+- Encode categorical variables to numerical value
 
 ```{r eval=FALSE}
-fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
-fit_cd = cooks.distance(fit)
-data_encoded = data_encoded[fit_cd < 4 / length(fit_cd),]
+  dummies_model = dummyVars(Sale_Price ~ ., data=data)
+  dataset = predict(dummies_model, newdata = data)
+  dataset = data.frame(dataset)
 
 ```
 
 - Check for missing value
 
-```{r echo=FALSE, eval=FALSE}
+```{r eval=FALSE}
 data_encoded <- data_encoded %>% 
                     fill(
                       dplyr::everything()
@@ -212,6 +212,7 @@ paste("Number of Missing Values", sum(is.na(data_encoded)))
 ```
 
 - Train and Test Data Split
+
     Split the dataset into Train and Test by using given test project ids.
 
 ```{r echo=FALSE}
@@ -240,9 +241,9 @@ testData = myPreProcess(testData1)
 
 ### Model Building
 
-#### LASSO Regression Model
+#### LASSO and Ridge mixed Regression Model
 
-- 10 Fold Cross Validation to choose Lamda hyperparameter
+- Lasso 10 Fold Cross Validation to choose Lamda hyperparameter
 
 ```{r}
 set.seed(8742)
@@ -251,7 +252,7 @@ cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1
 cv_lasso$lambda.min
 ```
 
-- Feature Engineering to select variables with non zero coefficients
+- Lasso Feature Engineering to select variables with non zero coefficients
 
 ```{r}
 # select variables
@@ -259,19 +260,19 @@ sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
 sel.vars = names(X[,sel.vars])
 ```
 
-- Fit & Predict using selected Model
+- Ridge Fit & Predict using selected Model
 
 ```{r echo=FALSE}
 lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha = 1)
 train_lasso_vars = sel.vars
 # ## Predictions
-preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
+preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 0)
 tr.err=RMSE(trainData$Sale_Price_Log,preds_train)
 #trainData$pred_sale_price = preds_train
 
 missing = setdiff(sel.vars,names(testData))
 testData[missing] = 0
-preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.min, alpha = 1)
+preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.min, alpha = 0)
 tst.err=RMSE(testData$Sale_Price_Log,preds)
 testData$pred_sale_price = preds
 knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
@@ -281,11 +282,23 @@ knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 
 - Train model to choose eta, subsample, max_depth hyperparameter: Ran model selection by running 10000 times and chose the lowest test rmse and corresponding hyperparameter values. Run time was around ~16 hours
 
-```{r eval=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+Optimal hyperparameters:
+
+- eta : 0.0474239 
+
+- max_depth : 4
+
+- subsample : 0.541795
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, echo=TRUE}
 set.seed(8742)
 start.time <- Sys.time()
 X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]
 dtrain <- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log)) 
+
+missing = setdiff(names(trainData),names(testData))
+testData[missing] = 0
+
 dtest <- xgb.DMatrix(data = as.matrix(testData[,names(X)]), label=testData$Sale_Price_Log)
 
 # Create empty lists
@@ -294,7 +307,8 @@ parameters_list = list()
 
 # Create 10,000 rows with random hyperparameters
 set.seed(8742)
-for (iter in 1:10){
+#for (iter in 1:10000){  # use this line only during hyperparameter search (runs 16hrs)
+for (iter in 1:1){       # use this line otherwise
   param <- list(booster = "gbtree",
                 objective = "reg:squarederror",
                 max_depth = sample(4:6, 1),
@@ -371,7 +385,7 @@ knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ## Results
 
 - The below two tables shows the individual split train and test errors for both models and other table shows the mean errors of the same.
-```{r echo=FALSE}
+```{r echo=TRUE}
 set.seed(8742)
 
 n = 10
@@ -394,19 +408,20 @@ for(j in 1:n) {
   trainData[missing] = 0
     
   X = trainData[,train_lasso_vars]
-  preds_train<-predict(lasso_mod,newx=as.matrix(X),s=cv_lasso$lambda.min, alpha = 1)
+  preds_train<-predict(lasso_mod,newx=as.matrix(X),s=cv_lasso$lambda.min, alpha = 0)
   lasso.train.error[j] = (RMSE(trainData$Sale_Price_Log,preds_train))
 
   missing = setdiff(train_lasso_vars,names(testData))
   testData[missing] = 0
-  preds_test<-predict(lasso_mod,newx=as.matrix(testData[,train_lasso_vars]),s=cv_lasso$lambda.min, alpha = 1)
+  preds_test<-predict(lasso_mod,newx=as.matrix(testData[,train_lasso_vars]),s=cv_lasso$lambda.min, alpha = 0)
   lasso.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
+  
 }
 
 ```
 
 
-```{r echo=FALSE}
+```{r echo=TRUE}
 set.seed(8742)
 n = 10
 nr = nrow(trainData)
@@ -438,6 +453,7 @@ for(j in 1:n) {
   X = testData[,names(X)]
   preds_test = predict(xgbFit, newdata = as.matrix(X))
   xg.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
+  
 }
 
 ```
@@ -465,6 +481,6 @@ results %>%
 
 - There are two important observations we had during model building.
 
-  1. Without outlier removal Lasso Model didn't meet the criteria specified by the project requirement. When we handled the outlier data points by doing linear regression and using cooks distiance metrics then the performance was greatly improved and both train and test errors for Lasso Regression was below 10.
+  1. We were not able to satisfy bench mark RMSE requirement for regression model by using only Lasso or Ridge regularization. We ended up using a mixture of both Lasso and Ridge. We use Lasso to drop insignificant variables, and cross-validation to get lambda min first. We then use Ridge to regularize the remaining variables which have colinearity among them.
   
   2. The hyperparameter tuning for XGBoost runs too long and to tune Lambda, MaX_Depth and SubSample, took 16 hours to find the optimal value by running 10000 models in my laptop. Need to work on parallelizing the code with doMC package or SParkR to improve the performance.

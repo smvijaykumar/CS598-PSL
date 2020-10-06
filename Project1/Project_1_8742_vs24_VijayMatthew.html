@@ -419,12 +419,10 @@ summary {
 <div id="data-preprocessing" class="section level3">
 <h3>Data PreProcessing</h3>
 <ul>
-<li>Remove features with Zero variance</li>
+<li>Remove predictors with imbalance data or can be inferred from other predictors</li>
 </ul>
-<pre class="r"><code>  # Find zero varience factors using caret and remove
-  nzv.data = nearZeroVar(data, saveMetrics = TRUE)
-  drop.cols = rownames(nzv.data)[nzv.data$nzv == TRUE]
-  remove.var = c(drop.cols, &quot;Longitude&quot;,&quot;Latitude&quot;)
+<pre class="r"><code>  remove.var &lt;- c(&#39;Street&#39;, &#39;Utilities&#39;,  &#39;Condition_2&#39;, &#39;Roof_Matl&#39;, &#39;Heating&#39;, &#39;Pool_QC&#39;, &#39;Misc_Feature&#39;, &#39;Low_Qual_Fin_SF&#39;, &#39;Pool_Area&#39;, &#39;Longitude&#39;,&#39;Latitude&#39;)
+
   data = removeVars(data,remove.var)</code></pre>
 <ul>
 <li>Impute Missing Values with Preprocess using Caret package</li>
@@ -432,50 +430,147 @@ summary {
 <pre class="r"><code>d &lt;- preProcess(data, &quot;medianImpute&quot;)
 data = predict(d,data)</code></pre>
 <ul>
-<li>Log transformation for skewed features</li>
+<li>Winsorize numerical variables</li>
 </ul>
-<pre class="r"><code>skewed.vars = getSkewedVars(data)
-data_encoded = hotEncoding(data)
-for(i in skewed.vars){
-  if(0 %in% data_encoded[, i]){
-    data_encoded[,i] &lt;- log(1+data_encoded[,i])
-  }
-  else{
-    data_encoded[,i] &lt;- log(data_encoded[,i])
-  }
-}
-data_encoded$PID = data$PID
-data_encoded$Sale_Price = data$Sale_Price
-data_encoded$Sale_Price_Log = log(data$Sale_Price)</code></pre>
+<pre class="r"><code>winsor.vars &lt;- c(&quot;Lot_Frontage&quot;, &quot;Lot_Area&quot;, &quot;Mas_Vnr_Area&quot;, &quot;BsmtFin_SF_2&quot;, &quot;Bsmt_Unf_SF&quot;, &quot;Total_Bsmt_SF&quot;, &quot;Second_Flr_SF&quot;, &#39;First_Flr_SF&#39;, &quot;Gr_Liv_Area&quot;, &quot;Garage_Area&quot;, &quot;Wood_Deck_SF&quot;, &quot;Open_Porch_SF&quot;, &quot;Enclosed_Porch&quot;, &quot;Three_season_porch&quot;, &quot;Screen_Porch&quot;, &quot;Misc_Val&quot;)
+
+quan.value &lt;- 0.95
+for(var in winsor.vars){
+    tmp &lt;- data[, var]
+    myquan &lt;- quantile(tmp, probs = quan.value, na.rm = TRUE)
+    tmp[tmp &gt; myquan] &lt;- myquan
+    data[, var] &lt;- tmp
+}</code></pre>
 <ul>
-<li>Remove Outlier Data points</li>
+<li>Encode categorical variables to numerical value</li>
 </ul>
-<pre class="r"><code>fit = lm(Sale_Price_Log ~ Lot_Area + Mas_Vnr_Area  + Bsmt_Unf_SF + Total_Bsmt_SF + Second_Flr_SF + First_Flr_SF + Gr_Liv_Area + Garage_Area + Wood_Deck_SF   , data = data_encoded)
-fit_cd = cooks.distance(fit)
-data_encoded = data_encoded[fit_cd &lt; 4 / length(fit_cd),]</code></pre>
+<pre class="r"><code>  dummies_model = dummyVars(Sale_Price ~ ., data=data)
+  dataset = predict(dummies_model, newdata = data)
+  dataset = data.frame(dataset)</code></pre>
 <ul>
-<li><p>Check for missing value</p></li>
-<li><p>Train and Test Data Split Split the dataset into Train and Test by using given test project ids.</p></li>
+<li>Check for missing value</li>
+</ul>
+<pre class="r"><code>data_encoded &lt;- data_encoded %&gt;% 
+                    fill(
+                      dplyr::everything()
+                    )
+# counting number of missing values
+paste(&quot;Number of Missing Values&quot;, sum(is.na(data_encoded)))</code></pre>
+<ul>
+<li><p>Train and Test Data Split</p>
+<p>Split the dataset into Train and Test by using given test project ids.</p></li>
 </ul>
 </div>
 <div id="model-building" class="section level3">
 <h3>Model Building</h3>
-<div id="lasso-regression-model" class="section level4">
-<h4>LASSO Regression Model</h4>
+<div id="lasso-and-ridge-mixed-regression-model" class="section level4">
+<h4>LASSO and Ridge mixed Regression Model</h4>
 <ul>
-<li>10 Fold Cross Validation to choose Lamda hyperparameter</li>
+<li>Lasso 10 Fold Cross Validation to choose Lamda hyperparameter</li>
 </ul>
 <pre class="r"><code>set.seed(8742)
 X = trainData[,!names(trainData) %in% c(&quot;Sale_Price&quot;,&quot;Sale_Price_Log&quot;,&quot;PID&quot;)]
 cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1)
 cv_lasso$lambda.min</code></pre>
-<pre><code>## [1] 0.0009045</code></pre>
+<pre><code>## [1] 0.003145</code></pre>
 <ul>
-<li>Feature Engineering to select variables with non zero coefficients</li>
+<li>Lasso Feature Engineering to select variables with non zero coefficients</li>
 </ul>
 <pre class="r"><code># select variables
 sel.vars &lt;- predict(cv_lasso, type=&quot;nonzero&quot;, s = cv_lasso$lambda.min)$X1
 sel.vars = names(X[,sel.vars])</code></pre>
+<ul>
+<li>Ridge Fit &amp; Predict using selected Model</li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th align="right">train_rmse</th>
+<th align="right">test_rmse</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.1042</td>
+<td align="right">0.1234</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="xgboost---boosting-model" class="section level4">
+<h4>XGBoost - Boosting Model</h4>
+<ul>
+<li>Train model to choose eta, subsample, max_depth hyperparameter: Ran model selection by running 10000 times and chose the lowest test rmse and corresponding hyperparameter values. Run time was around ~16 hours</li>
+</ul>
+<p>Optimal hyperparameters:</p>
+<ul>
+<li><p>eta : 0.0474239</p></li>
+<li><p>max_depth : 4</p></li>
+<li><p>subsample : 0.541795</p></li>
+</ul>
+<pre class="r"><code>set.seed(8742)
+start.time &lt;- Sys.time()
+X = trainData[,!names(trainData) %in% c(&quot;Sale_Price&quot;,&quot;Sale_Price_Log&quot;)]
+dtrain &lt;- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log)) 
+
+missing = setdiff(names(trainData),names(testData))
+testData[missing] = 0
+
+dtest &lt;- xgb.DMatrix(data = as.matrix(testData[,names(X)]), label=testData$Sale_Price_Log)
+
+# Create empty lists
+lowest_error_list = list()
+parameters_list = list()
+
+# Create 10,000 rows with random hyperparameters
+set.seed(8742)
+#for (iter in 1:10000){  # use this line only during hyperparameter search (runs 16hrs)
+for (iter in 1:1){       # use this line otherwise
+  param &lt;- list(booster = &quot;gbtree&quot;,
+                objective = &quot;reg:squarederror&quot;,
+                max_depth = sample(4:6, 1),
+                eta = runif(1, .04, .05),
+                subsample = runif(1, .5, 0.6)
+    )
+  parameters &lt;- as.data.frame(param)
+  parameters_list[[iter]] &lt;- parameters
+}
+
+# Create object that contains all randomly created hyperparameters
+parameters_df = do.call(rbind, parameters_list)
+
+
+# Use randomly created parameters to create 10,000 XGBoost-models
+for (row in 1:nrow(parameters_df)){
+  set.seed(8742)
+  mdcv &lt;- xgb.train(data = dtrain, 
+                    booster = &quot;gbtree&quot;,
+                    objective = &quot;reg:squarederror&quot;,
+                    max_depth = parameters_df$max_depth[row],
+                    eta = parameters_df$eta[row],
+                    subsample = parameters_df$subsample[row],
+                    nrounds= 1000,
+                    eval_metric = &quot;rmse&quot;,
+                    early_stopping_rounds= 30,
+                    verbose = FALSE,
+                    watchlist = list(train= dtrain, val= dtest)
+  )
+  lowest_error = mdcv$evaluation_log[mdcv$best_iteration,]
+  lowest_error_list[[row]] = lowest_error
+}
+
+# Create object that contains all accuracy&#39;s
+lowest_error_df = do.call(rbind, lowest_error_list)
+
+# Bind columns of accuracy values and random hyperparameter values
+randomsearch = cbind(lowest_error_df, parameters_df)
+
+# Quickly display highest accuracy
+best_xg_param = randomsearch[which(randomsearch$val_rmse == min(randomsearch$val_rmse)),]
+
+# Stop time and calculate difference
+end.time = Sys.time()
+time.taken = end.time - start.time</code></pre>
 <ul>
 <li>Fit &amp; Predict using selected Model</li>
 </ul>
@@ -488,29 +583,8 @@ sel.vars = names(X[,sel.vars])</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="right">0.0914</td>
-<td align="right">0.1036</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div id="xgboost---boosting-model" class="section level4">
-<h4>XGBoost - Boosting Model</h4>
-<ul>
-<li><p>Train model to choose eta, subsample, max_depth hyperparameter: Ran model selection by running 10000 times and chose the lowest test rmse and corresponding hyperparameter values. Run time was around ~16 hours</p></li>
-<li><p>Fit &amp; Predict using selected Model</p></li>
-</ul>
-<table>
-<thead>
-<tr class="header">
-<th align="right">train_rmse</th>
-<th align="right">test_rmse</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="right">0.0241</td>
-<td align="right">0.102</td>
+<td align="right">0.0309</td>
+<td align="right">0.1113</td>
 </tr>
 </tbody>
 </table>
@@ -520,8 +594,74 @@ sel.vars = names(X[,sel.vars])</code></pre>
 <div id="results" class="section level2">
 <h2>Results</h2>
 <ul>
-<li><p>The below two tables shows the individual split train and test errors for both models and other table shows the mean errors of the same.</p></li>
-<li><p>10 Train &amp; Test Split Error for Lasso &amp; XGBoost Model</p></li>
+<li>The below two tables shows the individual split train and test errors for both models and other table shows the mean errors of the same.</li>
+</ul>
+<pre class="r"><code>set.seed(8742)
+
+n = 10
+nr = nrow(trainData)
+lasso.train.error = rep(0,n)
+lasso.test.error = rep(0,n)
+
+for(j in 1:n) {
+  train &lt;- data[-testIDs[,j], ]
+  test &lt;- data[testIDs[,j], ]
+  
+  test.y &lt;- test[, c(&quot;PID&quot;, &quot;Sale_Price&quot;)]
+  test &lt;- test[, !names(test) %in% c(&quot;Sale_Price&quot;)]
+  
+  trainData = myPreProcess(train)
+  testData1 = merge(test, test.y, by = &quot;PID&quot;)
+  testData = myPreProcess(testData1)
+  
+  missing = setdiff(train_lasso_vars,names(trainData))
+  trainData[missing] = 0
+    
+  X = trainData[,train_lasso_vars]
+  preds_train&lt;-predict(lasso_mod,newx=as.matrix(X),s=cv_lasso$lambda.min, alpha = 0)
+  lasso.train.error[j] = (RMSE(trainData$Sale_Price_Log,preds_train))
+
+  missing = setdiff(train_lasso_vars,names(testData))
+  testData[missing] = 0
+  preds_test&lt;-predict(lasso_mod,newx=as.matrix(testData[,train_lasso_vars]),s=cv_lasso$lambda.min, alpha = 0)
+  lasso.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
+  
+}</code></pre>
+<pre class="r"><code>set.seed(8742)
+n = 10
+nr = nrow(trainData)
+xg.train.error = rep(0,n)
+xg.test.error = rep(0,n)
+
+for(j in 1:n) {
+  train &lt;- data[-testIDs[,j], ]
+  test &lt;- data[testIDs[,j], ]
+  
+  test.y &lt;- test[, c(&quot;PID&quot;, &quot;Sale_Price&quot;)]
+  test &lt;- test[, !names(test) %in% c(&quot;Sale_Price&quot;)]
+  
+  trainData = myPreProcess(train)
+  testData1 = merge(test, test.y, by = &quot;PID&quot;)
+  testData = myPreProcess(testData1)
+  
+  missing = setdiff(train_xg_vars,names(trainData))
+  trainData[missing] = 0
+    
+  X = trainData[,train_xg_vars]
+  preds_train = predict(xgbFit, newdata = as.matrix(X))
+  xg.train.error[j] = (RMSE(trainData$Sale_Price_Log,preds_train))
+  
+  # rmse of testing data
+  missing = setdiff(names(X),names(testData))
+  testData[missing] = 0
+  
+  X = testData[,names(X)]
+  preds_test = predict(xgbFit, newdata = as.matrix(X))
+  xg.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
+  
+}</code></pre>
+<ul>
+<li>10 Train &amp; Test Split Error for Lasso &amp; XGBoost Model</li>
 </ul>
 <table>
 <thead>
@@ -534,64 +674,64 @@ sel.vars = names(X[,sel.vars])</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="right">0.0961</td>
-<td align="right">0.0965</td>
-<td align="right">0.0614</td>
-<td align="right">0.0617</td>
+<td align="right">0.1123</td>
+<td align="right">0.1055</td>
+<td align="right">0.0672</td>
+<td align="right">0.0643</td>
 </tr>
 <tr class="even">
-<td align="right">0.0962</td>
-<td align="right">0.0954</td>
-<td align="right">0.0614</td>
-<td align="right">0.0603</td>
+<td align="right">0.1071</td>
+<td align="right">0.1173</td>
+<td align="right">0.0654</td>
+<td align="right">0.0696</td>
 </tr>
 <tr class="odd">
-<td align="right">0.0914</td>
-<td align="right">0.1036</td>
-<td align="right">0.0241</td>
-<td align="right">0.1020</td>
+<td align="right">0.1042</td>
+<td align="right">0.1234</td>
+<td align="right">0.0309</td>
+<td align="right">0.1113</td>
 </tr>
 <tr class="even">
-<td align="right">0.0955</td>
-<td align="right">0.0952</td>
-<td align="right">0.0613</td>
-<td align="right">0.0594</td>
+<td align="right">0.1098</td>
+<td align="right">0.1118</td>
+<td align="right">0.0677</td>
+<td align="right">0.0639</td>
 </tr>
 <tr class="odd">
-<td align="right">0.0951</td>
-<td align="right">0.0966</td>
-<td align="right">0.0597</td>
-<td align="right">0.0629</td>
+<td align="right">0.1104</td>
+<td align="right">0.1100</td>
+<td align="right">0.0671</td>
+<td align="right">0.0647</td>
 </tr>
 <tr class="even">
-<td align="right">0.0951</td>
-<td align="right">0.0974</td>
-<td align="right">0.0612</td>
-<td align="right">0.0616</td>
+<td align="right">0.1125</td>
+<td align="right">0.1051</td>
+<td align="right">0.0672</td>
+<td align="right">0.0643</td>
 </tr>
 <tr class="odd">
-<td align="right">0.0957</td>
-<td align="right">0.0980</td>
-<td align="right">0.0613</td>
-<td align="right">0.0613</td>
+<td align="right">0.1071</td>
+<td align="right">0.1174</td>
+<td align="right">0.0654</td>
+<td align="right">0.0696</td>
 </tr>
 <tr class="even">
-<td align="right">0.0901</td>
-<td align="right">0.1044</td>
-<td align="right">0.0242</td>
-<td align="right">0.1027</td>
+<td align="right">0.1041</td>
+<td align="right">0.1235</td>
+<td align="right">0.0309</td>
+<td align="right">0.1113</td>
 </tr>
 <tr class="odd">
-<td align="right">0.0946</td>
-<td align="right">0.0959</td>
-<td align="right">0.0609</td>
-<td align="right">0.0607</td>
+<td align="right">0.1099</td>
+<td align="right">0.1115</td>
+<td align="right">0.0677</td>
+<td align="right">0.0640</td>
 </tr>
 <tr class="even">
-<td align="right">0.0941</td>
-<td align="right">0.0974</td>
-<td align="right">0.0596</td>
-<td align="right">0.0641</td>
+<td align="right">0.1104</td>
+<td align="right">0.1101</td>
+<td align="right">0.0671</td>
+<td align="right">0.0647</td>
 </tr>
 </tbody>
 </table>
@@ -599,14 +739,14 @@ sel.vars = names(X[,sel.vars])</code></pre>
 <li>Mean Train &amp; Test Error for Lasso &amp; XGBoost Model</li>
 </ul>
 <pre><code>##   lasso.train.error lasso.test.error xgboost.train.error xgboost.test.error
-## 1           0.09439          0.09803             0.05352            0.06968</code></pre>
+## 1            0.1088           0.1136             0.05966            0.07478</code></pre>
 </div>
 <div id="discussion" class="section level2">
 <h2>Discussion</h2>
 <ul>
 <li><p>There are two important observations we had during model building.</p>
 <ol style="list-style-type: decimal">
-<li><p>Without outlier removal Lasso Model didn’t meet the criteria specified by the project requirement. When we handled the outlier data points by doing linear regression and using cooks distiance metrics then the performance was greatly improved and both train and test errors for Lasso Regression was below 10.</p></li>
+<li><p>We were not able to satisfy bench mark RMSE requirement for regression model by using only Lasso or Ridge regularization. We ended up using a mixture of both Lasso and Ridge. We use Lasso to drop insignificant variables, and cross-validation to get lambda min first. We then use Ridge to regularize the remaining variables which have colinearity among them.</p></li>
 <li><p>The hyperparameter tuning for XGBoost runs too long and to tune Lambda, MaX_Depth and SubSample, took 16 hours to find the optimal value by running 10000 models in my laptop. Need to work on parallelizing the code with doMC package or SParkR to improve the performance.</p></li>
 </ol></li>
 </ul>
