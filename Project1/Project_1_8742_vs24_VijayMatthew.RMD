@@ -3,10 +3,10 @@ title: "PSL (F20) Project 1"
 author: "Vijayakumar Sitha Mohan (VS24), Waitong Matthew Leung (wmleung2)"
 date: '13-Sept-2020'
 output:
+  pdf_document: default
   html_document: 
     theme: readable
     toc: yes
-  pdf_document: default
 urlcolor: cyan
 ---
 
@@ -201,7 +201,7 @@ paste("Number of Missing Values", sum(is.na(data_encoded)))
 
     Split the dataset into Train and Test by using given test project ids.
 
-```{r echo=FALSE}
+```{r echo=TRUE}
 
 data = read.csv("Ames_data.csv")
 testIDs <- read.table("project1_testIDs.dat")
@@ -331,7 +331,7 @@ time.taken = end.time - start.time
 
 + Fit & Predict using selected Model
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 set.seed(8742)
 X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
 train_xg_vars = names(X)
@@ -348,9 +348,9 @@ testData[missing] = 0
 preds2 <- predict(xgbFit, newdata = as.matrix(testData[,names(X)]))
 tst.err = RMSE(testData$Sale_Price_Log, preds2)
 
-mysubm2 = data.frame(PID=testData[,c("PID")],Sale_Price=round(exp(preds2),1))
-colnames(mysubm2) = c("PID","Sale_Price")
-write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE, quote = FALSE)
+#mysubm2 = data.frame(PID=testData[,c("PID")],Sale_Price=round(exp(preds2),1))
+#colnames(mysubm2) = c("PID","Sale_Price")
+#write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE, quote = FALSE)
 
 knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
@@ -358,7 +358,7 @@ knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ## Results
 
 - The below two tables shows the individual split train and test errors for both models and other table shows the mean errors of the same.
-```{r echo=TRUE}
+```{r echo=FALSE}
 set.seed(8742)
 n = 10
 nr = nrow(trainData)
@@ -392,7 +392,7 @@ for(j in 1:n) {
 ```
 
 
-```{r echo=TRUE}
+```{r echo=FALSE}
 set.seed(8742)
 n = 10
 nr = nrow(trainData)
