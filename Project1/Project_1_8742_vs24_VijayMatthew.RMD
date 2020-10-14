@@ -3,10 +3,10 @@ title: "PSL (F20) Project 1"
 author: "Vijayakumar Sitha Mohan (VS24), Waitong Matthew Leung (wmleung2)"
 date: '13-Sept-2020'
 output:
-  pdf_document: default
   html_document: 
     theme: readable
     toc: yes
+  pdf_document: default
 urlcolor: cyan
 ---
 
@@ -222,7 +222,7 @@ testData <- read.csv("test.csv")
 trainData = myPreProcess(trainData,FALSE)
 testData1 = merge(testData, test.y, by = "PID")
 testData = myPreProcess(testData1,TRUE)
-
+trainData_XG =trainData
 fit = lm(Sale_Price ~ Lot_Area + Mas_Vnr_Area , data = trainData)
 fit_cd = cooks.distance(fit)
 trainData = trainData[fit_cd < 4 / length(fit_cd),]
@@ -283,9 +283,9 @@ Optimal hyperparameters:
 ```{r eval=FALSE, message=FALSE, warning=FALSE, echo=TRUE}
 set.seed(8742)
 start.time <- Sys.time()
-X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log")]
-dtrain <- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log)) 
-missing = setdiff(names(trainData),names(testData))
+X = trainData_XG[,!names(trainData_XG) %in% c("Sale_Price","Sale_Price_Log")]
+dtrain <- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData_XG$Sale_Price_Log)) 
+missing = setdiff(names(trainData_XG),names(testData))
 testData[missing] = 0
 dtest <- xgb.DMatrix(data = as.matrix(testData[,names(X)]), label=testData$Sale_Price_Log)
 # Create empty lists
@@ -337,15 +337,15 @@ time.taken = end.time - start.time
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 set.seed(8742)
-X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
+X = trainData_XG[,!names(trainData_XG) %in% c("Sale_Price","Sale_Price_Log","PID")]
 train_xg_vars = names(X)
-xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log), 
+xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData_XG$Sale_Price_Log), 
                  nrounds = 1000, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
                  eta = 0.0474239, max_depth = 4, subsample = 0.541795)
 ## Predictions
 # rmse of training data
 predict_rf_train = predict(xgbFit, newdata = as.matrix(X))
-tr.err = RMSE(trainData$Sale_Price_Log, predict_rf_train)
+tr.err = RMSE(trainData_XG$Sale_Price_Log, predict_rf_train)
 # rmse of testing data
 missing = setdiff(names(trainData),names(testData))
 testData[missing] = 0
