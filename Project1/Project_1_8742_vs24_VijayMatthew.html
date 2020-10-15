@@ -462,7 +462,7 @@ paste(&quot;Number of Missing Values&quot;, sum(is.na(data_encoded)))</code></pr
 </ul>
 <pre class="r"><code>data = read.csv(&quot;Ames_data.csv&quot;)
 testIDs &lt;- read.table(&quot;project1_testIDs.dat&quot;)
-j &lt;- 3
+j &lt;- 4
 train &lt;- data[-testIDs[,j], ]
 test &lt;- data[testIDs[,j], ]
 
@@ -478,7 +478,11 @@ testData &lt;- read.csv(&quot;test.csv&quot;)
 
 trainData = myPreProcess(trainData,FALSE)
 testData1 = merge(testData, test.y, by = &quot;PID&quot;)
-testData = myPreProcess(testData1,TRUE)</code></pre>
+testData = myPreProcess(testData1,TRUE)
+trainData_XG =trainData
+fit = lm(Sale_Price ~ Lot_Area + Mas_Vnr_Area , data = trainData)
+fit_cd = cooks.distance(fit)
+trainData = trainData[fit_cd &lt; 4 / length(fit_cd),]</code></pre>
 </div>
 <div id="model-building" class="section level3">
 <h3>Model Building</h3>
@@ -491,7 +495,7 @@ testData = myPreProcess(testData1,TRUE)</code></pre>
 X = trainData[,!names(trainData) %in% c(&quot;Sale_Price&quot;,&quot;Sale_Price_Log&quot;,&quot;PID&quot;)]
 cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1)
 cv_lasso$lambda.min</code></pre>
-<pre><code>## [1] 0.003145</code></pre>
+<pre><code>## [1] 0.00375</code></pre>
 <ul>
 <li>Lasso Feature Engineering to select variables with non zero coefficients</li>
 </ul>
@@ -510,8 +514,8 @@ sel.vars = names(X[,sel.vars])</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="right">0.1042</td>
-<td align="right">0.1234</td>
+<td align="right">0.0996</td>
+<td align="right">0.1204</td>
 </tr>
 </tbody>
 </table>
@@ -529,9 +533,9 @@ sel.vars = names(X[,sel.vars])</code></pre>
 </ul>
 <pre class="r"><code>set.seed(8742)
 start.time &lt;- Sys.time()
-X = trainData[,!names(trainData) %in% c(&quot;Sale_Price&quot;,&quot;Sale_Price_Log&quot;)]
-dtrain &lt;- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log)) 
-missing = setdiff(names(trainData),names(testData))
+X = trainData_XG[,!names(trainData_XG) %in% c(&quot;Sale_Price&quot;,&quot;Sale_Price_Log&quot;)]
+dtrain &lt;- xgb.DMatrix(data = as.matrix(X), label = as.matrix(trainData_XG$Sale_Price_Log)) 
+missing = setdiff(names(trainData_XG),names(testData))
 testData[missing] = 0
 dtest &lt;- xgb.DMatrix(data = as.matrix(testData[,names(X)]), label=testData$Sale_Price_Log)
 # Create empty lists
@@ -581,24 +585,24 @@ time.taken = end.time - start.time</code></pre>
 <li>Fit &amp; Predict using selected Model</li>
 </ul>
 <pre class="r"><code>set.seed(8742)
-X = trainData[,!names(trainData) %in% c(&quot;Sale_Price&quot;,&quot;Sale_Price_Log&quot;,&quot;PID&quot;)]
+X = trainData_XG[,!names(trainData_XG) %in% c(&quot;Sale_Price&quot;,&quot;Sale_Price_Log&quot;,&quot;PID&quot;)]
 train_xg_vars = names(X)
-xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log), 
+xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData_XG$Sale_Price_Log), 
                  nrounds = 1000, verbose = FALSE, objective = &quot;reg:squarederror&quot;, eval_metric = &quot;rmse&quot;, 
                  eta = 0.0474239, max_depth = 4, subsample = 0.541795)
 ## Predictions
 # rmse of training data
 predict_rf_train = predict(xgbFit, newdata = as.matrix(X))
-tr.err = RMSE(trainData$Sale_Price_Log, predict_rf_train)
+tr.err = RMSE(trainData_XG$Sale_Price_Log, predict_rf_train)
 # rmse of testing data
 missing = setdiff(names(trainData),names(testData))
 testData[missing] = 0
 preds2 &lt;- predict(xgbFit, newdata = as.matrix(testData[,names(X)]))
 tst.err = RMSE(testData$Sale_Price_Log, preds2)
 
-mysubm2 = data.frame(PID=testData[,c(&quot;PID&quot;)],Sale_Price=round(exp(preds2),1))
-colnames(mysubm2) = c(&quot;PID&quot;,&quot;Sale_Price&quot;)
-write.csv(mysubm2, file = &quot;mysubmission2.txt&quot;, row.names = FALSE, quote = FALSE)
+#mysubm2 = data.frame(PID=testData[,c(&quot;PID&quot;)],Sale_Price=round(exp(preds2),1))
+#colnames(mysubm2) = c(&quot;PID&quot;,&quot;Sale_Price&quot;)
+#write.csv(mysubm2, file = &quot;mysubmission2.txt&quot;, row.names = FALSE, quote = FALSE)
 
 knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))</code></pre>
 <table>
@@ -610,8 +614,8 @@ knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="right">0.0309</td>
-<td align="right">0.1113</td>
+<td align="right">0.0304</td>
+<td align="right">0.1173</td>
 </tr>
 </tbody>
 </table>
@@ -635,64 +639,64 @@ knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="right">0.1123</td>
-<td align="right">0.1055</td>
-<td align="right">0.0672</td>
-<td align="right">0.0643</td>
+<td align="right">0.1033</td>
+<td align="right">0.1149</td>
+<td align="right">0.0692</td>
+<td align="right">0.0694</td>
 </tr>
 <tr class="even">
-<td align="right">0.1071</td>
+<td align="right">0.1013</td>
+<td align="right">0.1203</td>
+<td align="right">0.0682</td>
+<td align="right">0.0724</td>
+</tr>
+<tr class="odd">
+<td align="right">0.1034</td>
+<td align="right">0.1130</td>
+<td align="right">0.0708</td>
+<td align="right">0.0653</td>
+</tr>
+<tr class="even">
+<td align="right">0.0996</td>
+<td align="right">0.1204</td>
+<td align="right">0.0304</td>
 <td align="right">0.1173</td>
-<td align="right">0.0654</td>
-<td align="right">0.0696</td>
 </tr>
 <tr class="odd">
-<td align="right">0.1042</td>
-<td align="right">0.1234</td>
-<td align="right">0.0309</td>
-<td align="right">0.1113</td>
+<td align="right">0.1019</td>
+<td align="right">0.1086</td>
+<td align="right">0.0689</td>
+<td align="right">0.0704</td>
 </tr>
 <tr class="even">
-<td align="right">0.1098</td>
-<td align="right">0.1118</td>
-<td align="right">0.0677</td>
-<td align="right">0.0639</td>
+<td align="right">0.1035</td>
+<td align="right">0.1292</td>
+<td align="right">0.0692</td>
+<td align="right">0.0694</td>
 </tr>
 <tr class="odd">
-<td align="right">0.1104</td>
-<td align="right">0.1100</td>
-<td align="right">0.0671</td>
-<td align="right">0.0647</td>
+<td align="right">0.1013</td>
+<td align="right">0.1345</td>
+<td align="right">0.0682</td>
+<td align="right">0.0724</td>
 </tr>
 <tr class="even">
-<td align="right">0.1125</td>
-<td align="right">0.1051</td>
-<td align="right">0.0672</td>
-<td align="right">0.0643</td>
+<td align="right">0.1033</td>
+<td align="right">0.1280</td>
+<td align="right">0.0708</td>
+<td align="right">0.0653</td>
 </tr>
 <tr class="odd">
-<td align="right">0.1071</td>
-<td align="right">0.1174</td>
-<td align="right">0.0654</td>
-<td align="right">0.0696</td>
+<td align="right">0.0996</td>
+<td align="right">0.1340</td>
+<td align="right">0.0314</td>
+<td align="right">0.1168</td>
 </tr>
 <tr class="even">
-<td align="right">0.1041</td>
-<td align="right">0.1235</td>
-<td align="right">0.0309</td>
-<td align="right">0.1113</td>
-</tr>
-<tr class="odd">
-<td align="right">0.1099</td>
-<td align="right">0.1115</td>
-<td align="right">0.0677</td>
-<td align="right">0.0640</td>
-</tr>
-<tr class="even">
-<td align="right">0.1104</td>
-<td align="right">0.1101</td>
-<td align="right">0.0671</td>
-<td align="right">0.0647</td>
+<td align="right">0.1018</td>
+<td align="right">0.1241</td>
+<td align="right">0.0689</td>
+<td align="right">0.0704</td>
 </tr>
 </tbody>
 </table>
@@ -700,7 +704,7 @@ knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))</code></pre>
 <li>Mean Train &amp; Test Error for Lasso &amp; XGBoost Model</li>
 </ul>
 <pre><code>##   lasso.train.error lasso.test.error xgboost.train.error xgboost.test.error
-## 1            0.1088           0.1136             0.05966            0.07478</code></pre>
+## 1            0.1019           0.1227             0.06161            0.07891</code></pre>
 </div>
 <div id="discussion" class="section level2">
 <h2>Discussion</h2>

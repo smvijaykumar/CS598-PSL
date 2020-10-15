@@ -205,7 +205,7 @@ paste("Number of Missing Values", sum(is.na(data_encoded)))
 
 data = read.csv("Ames_data.csv")
 testIDs <- read.table("project1_testIDs.dat")
-j <- 3
+j <- 4
 train <- data[-testIDs[,j], ]
 test <- data[testIDs[,j], ]
 
@@ -378,6 +378,9 @@ for(j in 1:n) {
   trainData = myPreProcess(train,FALSE)
   testData1 = merge(test, test.y, by = "PID")
   testData = myPreProcess(testData1,TRUE)
+  fit = lm(Sale_Price ~ Lot_Area + Mas_Vnr_Area , data = trainData)
+  fit_cd = cooks.distance(fit)
+  trainData = trainData[fit_cd < 4 / length(fit_cd),]
   
   missing = setdiff(train_lasso_vars,names(trainData))
   trainData[missing] = 0

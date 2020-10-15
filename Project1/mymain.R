@@ -81,6 +81,11 @@ testData <- read.csv("test.csv")
 
 trainData = myPreProcess(trainData,FALSE)
 testData = myPreProcess(testData,TRUE)
+trainData_XG =trainData
+fit = lm(Sale_Price ~ Lot_Area + Mas_Vnr_Area , data = trainData)
+fit_cd = cooks.distance(fit)
+trainData = trainData[fit_cd < 4 / length(fit_cd),]
+
 
 dim(trainData)
 dim(testData)
@@ -123,17 +128,17 @@ write.csv(mysubm1, file = "mysubmission1.txt", row.names = FALSE,quote = FALSE)
 
 set.seed(8742)
 
-X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
+X = trainData_XG[,!names(trainData_XG) %in% c("Sale_Price","Sale_Price_Log","PID")]
 
-xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData$Sale_Price_Log), 
+xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData_XG$Sale_Price_Log), 
                  nrounds = 1000, verbose = FALSE, objective = "reg:squarederror", eval_metric = "rmse", 
                  eta = 0.0474239, max_depth = 4, subsample = 0.541795)
 ## Predictions
 # rmse of training data
 predict_rf_train = predict(xgbFit, newdata = as.matrix(X))
-print(paste("Model2 XGBoost Train RMSE:",RMSE(trainData$Sale_Price_Log, predict_rf_train)))
+print(paste("Model2 XGBoost Train RMSE:",RMSE(trainData_XG$Sale_Price_Log, predict_rf_train)))
 # rmse of testing data
-missing = setdiff(names(trainData),names(testData))
+missing = setdiff(names(trainData_XG),names(testData))
 if(length(missing) > 0)
 {
     testData[missing] = 0
