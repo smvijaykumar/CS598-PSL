@@ -28,19 +28,10 @@ library(e1071)
 
 ## Introduction
 
-The goal is to predict the final price of a home (in log scale) using AMES housing dataset. As a project requirement we need to build Two prediction models and we chose Lasso Regression and XBGBoost as our model to predict the sale price.
+The goal is to predict the final price of a home (in log scale) using AMES housing dataset. As a project requirement we need to build Two prediction models and we chose Lasso/Ridge Regression and XBGBoost as our model to predict the sale price.
 
-The dataset has 2930 rows (i.e., houses) and 83 columns.
-    The first column is “PID”, the Parcel identification number;
-    The last column is the response variable, Sale_Price;
-    The remaining 81 columns are explanatory variables describing (almost) every aspect of residential homes.
-
-Finally we need to create two output files with the predictions prices from each model.
-
-## Method
-
-### Utility Functions
 ```{r echo=FALSE}
+# Utility Functions
 
 hotEncoding = function(dataset, testFlag) {
   if(testFlag == TRUE) {
@@ -119,13 +110,16 @@ myPreProcess = function(data,testFlag) {
 ```
 
 
-### Data Read and Exploration
+## Data Exploration
 
-
-- Load Data
 ```{r echo=FALSE}
 data = read.csv("Ames_data.csv")
 ```
+
+The dataset has 2930 rows (i.e., houses) and 83 columns.
+    The first column is “PID”, the Parcel identification number;
+    The last column is the response variable, Sale_Price;
+    The remaining 81 columns are explanatory variables describing (almost) every aspect of residential homes.
 
 - Analysis of Response Variable(Sale Price)
 
@@ -133,7 +127,7 @@ data = read.csv("Ames_data.csv")
 
     A long right tail tells that there are outlier data points. max = 755,000 and min = 12,789
 
-- Skewness in Data
+- Skewness also in quite a few variables
 
 ```{r echo=FALSE}
 par(mfrow=c(1,4),pin=c(1,2))
@@ -144,64 +138,29 @@ plot(Sale_Price ~ Garage_Area, data = data)
 plot(Sale_Price ~ Lot_Area, data = data)
 ```
 
+## Overall Approach
+
+We chose the following two models to tackle this home price prediction problem. The general approach of both of the models are in the sequence of data prepreprocessing, optimal hyperparameters search, train model based on train data set and finally predict sale price with test data set.
+
+- Model 1: Lasso and Ridge mixed model. We use Lasso 10-fold cross validation to select relevant variables and lambda value first. Subsequently, We use selected variables and lambda value from Lasso to train Ridge model in order to remove colinearity of remaining variables.
+
+- Model 2: XGBoost model. We spent quite a lot of time (~16 hours) to search for the optimal value for the following hyperparameters, namely eta, max_depth, subsample. We randomly generated 10,000 combination of the three hyperparameters to select the set that give us minimal RMSE.
+
+
 ### Data PreProcessing
 
-- Remove predictors with imbalance data or can be inferred from other predictors
+- Remove some predictors with imbalance data or can be inferred from other predictors, i.e. 'Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude'.
 
-```{r eval=FALSE}
-  remove.var <- c('Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude')
+- Impute Missing Values with median value using Caret package
 
-  data = removeVars(data,remove.var)
-```
-
-- Impute Missing Values with Preprocess using Caret package
-
-```{r eval=FALSE}
-d <- preProcess(data, "medianImpute")
-data = predict(d,data)
-```
-
-- Winsorize numerical variables
-
-```{r eval=FALSE}
-winsor.vars <- c("Lot_Frontage", "Lot_Area", "Mas_Vnr_Area", "BsmtFin_SF_2", "Bsmt_Unf_SF", "Total_Bsmt_SF", "Second_Flr_SF", 'First_Flr_SF', "Gr_Liv_Area", "Garage_Area", "Wood_Deck_SF", "Open_Porch_SF", "Enclosed_Porch", "Three_season_porch", "Screen_Porch", "Misc_Val")
-
-quan.value <- 0.95
-for(var in winsor.vars){
-    tmp <- data[, var]
-    myquan <- quantile(tmp, probs = quan.value, na.rm = TRUE)
-    tmp[tmp > myquan] <- myquan
-    data[, var] <- tmp
-}
-
-```
+- Winsorize numerical variables by 95 percentile value
 
 - Encode categorical variables to numerical value
 
-```{r eval=FALSE}
-  dummies_model = dummyVars(Sale_Price ~ ., data=data)
-  dataset = predict(dummies_model, newdata = data)
-  dataset = data.frame(dataset)
+- For model 2 XGBoost model, remove outliners in train set based on cook's distance (remove train data with cook's distance > 4/n)
 
-```
 
-- Check for missing value
-
-```{r eval=FALSE}
-data_encoded <- data_encoded %>% 
-                    fill(
-                      dplyr::everything()
-                    )
-# counting number of missing values
-paste("Number of Missing Values", sum(is.na(data_encoded)))
-
-```
-
-- Train and Test Data Split
-
-    Split the dataset into Train and Test by using given test project ids.
-
-```{r echo=TRUE}
+```{r echo= FALSE}
 
 data = read.csv("Ames_data.csv")
 testIDs <- read.table("project1_testIDs.dat")
@@ -231,26 +190,26 @@ trainData = trainData[fit_cd < 4 / length(fit_cd),]
 
 ### Model Building
 
-#### LASSO and Ridge mixed Regression Model
+#### Model 1: LASSO/Ridge Regression Model 
 
 - Lasso 10 Fold Cross Validation to choose Lamda hyperparameter
 
-```{r}
+```{r echo=FALSE}
 set.seed(8742)
 X = trainData[,!names(trainData) %in% c("Sale_Price","Sale_Price_Log","PID")]
 cv_lasso=cv.glmnet(as.matrix(X),trainData$Sale_Price_Log, nfolds = 10, alpha = 1)
-cv_lasso$lambda.min
+#cv_lasso$lambda.min
 ```
 
 - Lasso Feature Engineering to select variables with non zero coefficients
 
-```{r}
+```{r echo=FALSE}
 # select variables
 sel.vars <- predict(cv_lasso, type="nonzero", s = cv_lasso$lambda.min)$X1
 sel.vars = names(X[,sel.vars])
 ```
 
-- Ridge Fit & Predict using selected Model
+- Ridge Fit & Predict using optimal hyperparameters
 
 ```{r echo=FALSE}
 lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha = 1)
@@ -265,22 +224,16 @@ testData[missing] = 0
 preds<-predict(lasso_mod,newx=as.matrix(testData[,sel.vars]),s=cv_lasso$lambda.min, alpha = 0)
 tst.err=RMSE(testData$Sale_Price_Log,preds)
 testData$pred_sale_price = preds
-knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
+#knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
 
-#### XGBoost - Boosting Model
+#### Model 2: XGBoost - Boosting Model
 
 - Train model to choose eta, subsample, max_depth hyperparameter: Ran model selection by running 10000 times and chose the lowest test rmse and corresponding hyperparameter values. Run time was around ~16 hours
 
-Optimal hyperparameters:
+- Optimal hyperparameters: (eta = 0.0474239, max_depth = 4, subsample = 0.541795)
 
-- eta : 0.0474239 
-
-- max_depth : 4
-
-- subsample : 0.541795
-
-```{r eval=FALSE, message=FALSE, warning=FALSE, echo=TRUE}
+```{r eval=FALSE, message=FALSE, warning=FALSE, echo=FALSE}
 set.seed(8742)
 start.time <- Sys.time()
 X = trainData_XG[,!names(trainData_XG) %in% c("Sale_Price","Sale_Price_Log")]
@@ -333,9 +286,9 @@ end.time = Sys.time()
 time.taken = end.time - start.time
 ```
 
-+ Fit & Predict using selected Model
++ Fit & Predict using optimal hyperparameters
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 set.seed(8742)
 X = trainData_XG[,!names(trainData_XG) %in% c("Sale_Price","Sale_Price_Log","PID")]
 train_xg_vars = names(X)
@@ -356,19 +309,25 @@ tst.err = RMSE(testData$Sale_Price_Log, preds2)
 #colnames(mysubm2) = c("PID","Sale_Price")
 #write.csv(mysubm2, file = "mysubmission2.txt", row.names = FALSE, quote = FALSE)
 
-knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
+#knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
 
 ## Results
 
 - The below two tables shows the individual split train and test errors for both models and other table shows the mean errors of the same.
+
 ```{r echo=FALSE}
 set.seed(8742)
 n = 10
 nr = nrow(trainData)
 lasso.train.error = rep(0,n)
 lasso.test.error = rep(0,n)
+lasso.time = rep(0,n)
+
 for(j in 1:n) {
+  
+  start.time = Sys.time()
+
   train <- data[-testIDs[,j], ]
   test <- data[testIDs[,j], ]
   
@@ -394,6 +353,9 @@ for(j in 1:n) {
   preds_test<-predict(lasso_mod,newx=as.matrix(testData[,train_lasso_vars]),s=cv_lasso$lambda.min, alpha = 0)
   lasso.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
   
+  # Stop time and calculate difference
+  end.time = Sys.time()
+  lasso.time[j] = end.time - start.time
 }
 
 ```
@@ -405,8 +367,12 @@ n = 10
 nr = nrow(trainData)
 xg.train.error = rep(0,n)
 xg.test.error = rep(0,n)
+xg.time = rep(0,n)
 
 for(j in 1:n) {
+  
+  start.time = Sys.time()
+    
   train <- data[-testIDs[,j], ]
   test <- data[testIDs[,j], ]
   
@@ -431,17 +397,21 @@ for(j in 1:n) {
   X = testData[,names(X)]
   preds_test = predict(xgbFit, newdata = as.matrix(X))
   xg.test.error[j] = (RMSE(testData$Sale_Price_Log,preds_test))
-  
-}
 
+  # Stop time and calculate difference
+  end.time = Sys.time()
+  xg.time[j] = end.time - start.time  
+}
 ```
 
 - 10 Train & Test Split Error for Lasso & XGBoost Model
 
 ```{r echo=FALSE}
-results = data.frame(cbind(lasso.train.error,lasso.test.error,xg.train.error,xg.test.error))
-colnames(results)=c("Lasso Train Error","Lasso Test Error","XGBoost Train Error","XGBoost Test Error")
+results = data.frame(cbind(seq(1,10),lasso.test.error,xg.test.error))
+colnames(results)=c("Split #", "Lasso Test Error", "XGBoost Test Error")
 knitr::kable(results)
+
+
 ```
 
 - Mean Train & Test Error for Lasso & XGBoost Model
@@ -454,11 +424,25 @@ results %>%
                     xgboost.test.error = mean(xg.test.error))
 ```
 
+- Running time
+
+System: MSI laptop, Intel i7, 2.60GHz, 16GB, Win 10
+
+```{r echo=FALSE}
+
+run.time = data.frame(cbind(sum(lasso.time), sum(xg.time)))
+colnames(run.time) = c("Lasso total train & test time (second)", "XGBoost total train & test time (second)")
+knitr::kable(run.time)
+```
+
+
 
 ## Discussion
 
-- There are two important observations we had during model building.
+These are important observations we had during model building.
 
-  1. We were not able to satisfy bench mark RMSE requirement for regression model by using only Lasso or Ridge regularization. We ended up using a mixture of both Lasso and Ridge. We use Lasso to drop insignificant variables, and cross-validation to get lambda min first. We then use Ridge to regularize the remaining variables which have colinearity among them.
+  1. We were not able to satisfy bench mark RMSE requirement for regression model by using only Lasso or Ridge regularization alone. We ended up need to have extra train data preprocessing to remove outliners based on cook's distance. We also need to use Lasso to drop insignificant variables, and cross-validation to get lambda min first. We then use Ridge to regularize the remaining variables which have colinearity among them.
   
   2. The hyperparameter tuning for XGBoost runs too long and to tune Lambda, MaX_Depth and SubSample, took 16 hours to find the optimal value by running 10000 models in my laptop. Need to work on parallelizing the code with doMC package or SParkR to improve the performance.
+
+  3. There are quite a few variables with skewness. We tried to put in transformation to skewed variables but no improvement in prediction accuracy.

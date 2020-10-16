@@ -108,7 +108,7 @@ lasso_mod = cv.glmnet(as.matrix(X[,sel.vars]), trainData$Sale_Price_Log, alpha =
 
 # ## Predictions with Ridge
 preds_train<-predict(lasso_mod,newx=as.matrix(X[,sel.vars]),s=cv_lasso$lambda.min, alpha = 0)
-print(paste("Model1 Lasso Train RMSE:",RMSE(trainData$Sale_Price_Log,preds_train)))
+#print(paste("Model1 Lasso Train RMSE:",RMSE(trainData$Sale_Price_Log,preds_train)))
 #trainData$pred_sale_price = preds_trai
 
 missing = setdiff(sel.vars,names(testData))
@@ -136,7 +136,7 @@ xgbFit = xgboost(data = as.matrix(X), label = as.matrix(trainData_XG$Sale_Price_
 ## Predictions
 # rmse of training data
 predict_rf_train = predict(xgbFit, newdata = as.matrix(X))
-print(paste("Model2 XGBoost Train RMSE:",RMSE(trainData_XG$Sale_Price_Log, predict_rf_train)))
+#print(paste("Model2 XGBoost Train RMSE:",RMSE(trainData_XG$Sale_Price_Log, predict_rf_train)))
 # rmse of testing data
 missing = setdiff(names(trainData_XG),names(testData))
 if(length(missing) > 0)
