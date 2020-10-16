@@ -1,13 +1,13 @@
 ---
 title: "PSL (F20) Project 1"
 author: "Vijayakumar Sitha Mohan (VS24), Waitong Matthew Leung (wmleung2)"
-date: '13-Sept-2020'
 output:
   html_document: 
     theme: readable
-    toc: yes
+    toc: no
   pdf_document: default
 urlcolor: cyan
+fontsize: 10pt
 ---
 
 
@@ -24,9 +24,10 @@ library(knitr)
 library(xgboost)
 library(glmnet)
 library(e1071)
+library(kableExtra)
 ```
 
-## Introduction
+#### Introduction
 
 The goal is to predict the final price of a home (in log scale) using AMES housing dataset. As a project requirement we need to build Two prediction models and we chose Lasso/Ridge Regression and XBGBoost as our model to predict the sale price.
 
@@ -110,21 +111,17 @@ myPreProcess = function(data,testFlag) {
 ```
 
 
-## Data Exploration
+#### Data Exploration
 
 ```{r echo=FALSE}
 data = read.csv("Ames_data.csv")
 ```
 
-The dataset has 2930 rows (i.e., houses) and 83 columns.
-    The first column is “PID”, the Parcel identification number;
-    The last column is the response variable, Sale_Price;
-    The remaining 81 columns are explanatory variables describing (almost) every aspect of residential homes.
+The dataset has 2930 rows (i.e., houses) and 83 columns.The first column is “PID”, the Parcel identification number;    The last column is the response variable, Sale_Price;The remaining 81 columns are explanatory variables describing (almost) every aspect of residential homes.
 
 - Analysis of Response Variable(Sale Price)
-
-    A mean and median sale price of $180,796 and $160,000 respectively, indicating a positive skew, which was confirmed by histogram of the Sale Price.
-
+    A mean and median sale price of $180,796 and $160,000 respectively, indicating a positive skew, which was confirmed by 
+- Histogram of the Sale Price.
     A long right tail tells that there are outlier data points. max = 755,000 and min = 12,789
 
 - Skewness also in quite a few variables
@@ -132,13 +129,12 @@ The dataset has 2930 rows (i.e., houses) and 83 columns.
 ```{r echo=FALSE}
 par(mfrow=c(1,4),pin=c(1,2))
 hist(data$Sale_Price,col = "blue", main = "Histogram of Sale Price", xlab = "Sale Price")
-
 plot(Sale_Price ~ Gr_Liv_Area, data = data)
 plot(Sale_Price ~ Garage_Area, data = data)
 plot(Sale_Price ~ Lot_Area, data = data)
 ```
 
-## Overall Approach
+#### Overall Approach
 
 We chose the following two models to tackle this home price prediction problem. The general approach of both of the models are in the sequence of data prepreprocessing, optimal hyperparameters search, train model based on train data set and finally predict sale price with test data set.
 
@@ -147,7 +143,7 @@ We chose the following two models to tackle this home price prediction problem. 
 - Model 2: XGBoost model. We spent quite a lot of time (~16 hours) to search for the optimal value for the following hyperparameters, namely eta, max_depth, subsample. We randomly generated 10,000 combination of the three hyperparameters to select the set that give us minimal RMSE.
 
 
-### Data PreProcessing
+#### Data PreProcessing
 
 - Remove some predictors with imbalance data or can be inferred from other predictors, i.e. 'Street', 'Utilities',  'Condition_2', 'Roof_Matl', 'Heating', 'Pool_QC', 'Misc_Feature', 'Low_Qual_Fin_SF', 'Pool_Area', 'Longitude','Latitude'.
 
@@ -188,7 +184,7 @@ trainData = trainData[fit_cd < 4 / length(fit_cd),]
 
 ```
 
-### Model Building
+#### Model Building
 
 #### Model 1: LASSO/Ridge Regression Model 
 
@@ -312,8 +308,7 @@ tst.err = RMSE(testData$Sale_Price_Log, preds2)
 #knitr::kable(data.frame(train_rmse=tr.err, test_rmse=tst.err))
 ```
 
-## Results
-
+#### Results
 - The below two tables shows the individual split train and test errors for both models and other table shows the mean errors of the same.
 
 ```{r echo=FALSE}
@@ -409,36 +404,29 @@ for(j in 1:n) {
 ```{r echo=FALSE}
 results = data.frame(cbind(seq(1,10),lasso.test.error,xg.test.error))
 colnames(results)=c("Split #", "Lasso Test Error", "XGBoost Test Error")
-knitr::kable(results)
-
-
+knitr::kable(results) %>% kable_styling(bootstrap_options = "striped", font_size = 10)
 ```
 
 - Mean Train & Test Error for Lasso & XGBoost Model
 
 ```{r echo=FALSE}
-results %>%
-   dplyr::summarise(lasso.train.error = mean(lasso.train.error),
+results = data.frame(lasso.train.error = mean(lasso.train.error),
                     lasso.test.error = mean(lasso.test.error),
                     xgboost.train.error = mean(xg.train.error),
                     xgboost.test.error = mean(xg.test.error))
+knitr::kable(results) %>% kable_styling(bootstrap_options = "striped", font_size = 10)
 ```
 
-- Running time
-
-System: MSI laptop, Intel i7, 2.60GHz, 16GB, Win 10
+- Running time: System: MSI laptop, Intel i7, 2.60GHz, 16GB, Win 10
 
 ```{r echo=FALSE}
 
 run.time = data.frame(cbind(sum(lasso.time), sum(xg.time)))
 colnames(run.time) = c("Lasso total train & test time (second)", "XGBoost total train & test time (second)")
-knitr::kable(run.time)
+knitr::kable(run.time) %>% kable_styling(bootstrap_options = "striped", font_size = 10)
 ```
 
-
-
-## Discussion
-
+#### Discussion
 These are important observations we had during model building.
 
   1. We were not able to satisfy bench mark RMSE requirement for regression model by using only Lasso or Ridge regularization alone. We ended up need to have extra train data preprocessing to remove outliners based on cook's distance. We also need to use Lasso to drop insignificant variables, and cross-validation to get lambda min first. We then use Ridge to regularize the remaining variables which have colinearity among them.
