@@ -148,7 +148,7 @@ mypredict = function(){
 
 #### Results
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 # save weighted mean absolute error WMAE
 start.time = Sys.time()
 num_folds <- 10
@@ -179,18 +179,18 @@ end.time = Sys.time()
 
 ```
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 results = data.frame(Fold=seq(1,10), WeightedMeanError=wae)
 results1 = data.frame(Mean_WAE=mean(wae))
-knitr::kable(results) %>% kable_styling(bootstrap_options = "striped", font_size = 10)
-knitr::kable(results1) %>% kable_styling(bootstrap_options = "striped", font_size = 10)
+knitr::kable(results) %>% kable_styling(bootstrap_options = "striped")
+knitr::kable(results1) %>% kable_styling(bootstrap_options = "striped")
 ```
 
 - Running time: System: MSI laptop, Intel i5, 2.0GHz, 8GB, Win 10
-```{r}
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 results1 = data.frame(Run.Time=(end.time-start.time))
 knitr::kable(results1) %>% kable_styling(bootstrap_options = "striped", font_size = 10)
-
 ```
 
 #### Discussion
