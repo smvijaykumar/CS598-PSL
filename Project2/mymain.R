@@ -23,7 +23,7 @@ mypredict = function() {
     select(-IsHoliday)
   
   train$Weekly_Sales[train$Weekly_Sales < 0] = 0
-  train$Weekly_Sales[train$Weekly_Sales == 0] = 1
+  #train$Weekly_Sales[train$Weekly_Sales == 0] = 1
   
   
   # not all depts need prediction
