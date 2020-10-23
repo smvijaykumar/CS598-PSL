@@ -95,9 +95,10 @@ mypredict = function(){
   test_current <- test %>%
     filter(Date >= start_date & Date < end_date) %>%
     select(-IsHoliday)
- 
+  
+  # Convert negative Weekly Sales to 0
   train$Weekly_Sales[train$Weekly_Sales < 0] = 0
-  train$Weekly_Sales[train$Weekly_Sales == 0] = 1
+  #train$Weekly_Sales[train$Weekly_Sales == 0] = 1
  
 
 # not all depts need prediction
