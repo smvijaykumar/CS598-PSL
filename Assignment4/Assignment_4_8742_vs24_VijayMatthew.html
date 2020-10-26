@@ -408,6 +408,62 @@ summary {
 <div id="prepare-my-function" class="section level2">
 <h2>Prepare my function</h2>
 <p>We prepare a function to perform the E-step, a function to perform the M-step, and then iteratively call these two functions in myEM.</p>
+<pre class="r"><code>##################################################################
+# Public functions
+##################################################################
+#&#39; Multivariate Normal Density 
+#&#39; 
+#&#39; Calculates mutlivariate normal densities. This is different to the dmvnorm function 
+#&#39; in the mvtnorm package in that it takes a matrix for both x and mean. It then calculates 
+#&#39; a vector of densities according to dmvnorm(x[i,],mean[i,],sigma,log = FALSE).
+#&#39; To aid computation the mahalanobis distances are calculated in parallel using mclapply.
+#&#39; @importFrom parallel mclapply
+#&#39; @param x A matrix of values
+#&#39; @param mean A matrix of means
+#&#39; @param sigma A covariance matrix
+#&#39; @param log Boolean for whether we want log densities or not
+#&#39; @details My own implementation of the multivariate normal density function
+#&#39; for increased efficiency for application in this package
+#&#39; because there are so many repeated calls to densitymvnorm using a 
+#&#39; given sigma matrix it made sense to have one that could take a matrix 
+#&#39; of means as well as a matrix of x&#39;s and treat them as 
+#&#39; paired, returning the density of x[1,] given mean[1,], x[2,] 
+#&#39; given mean[2,] also stops repeated inversions of the matrix sigma, and
+#&#39; calculates the densities in parallel
+#&#39; @return A vector of densities
+#&#39; @export
+densityMvNorm = function (x, mean, sigma, log = FALSE) 
+{
+  ## takes a matrix of means rather than a single vector
+  if (missing(sigma)) sigma = diag(ncol(x))
+  
+  if (NCOL(x) != NCOL(sigma)) {
+    stop(&quot;x and sigma have non-conforming size&quot;)
+  }
+  if (!isSymmetric(sigma, tol = sqrt(.Machine$double.eps), 
+                   check.attributes = FALSE)) {
+    stop(&quot;sigma must be a symmetric matrix&quot;)
+  }
+  if (NCOL(mean) != NROW(sigma)) {
+    stop(&quot;mean and sigma have non-conforming size&quot;)
+  }
+  ## invert matrix before hand so only do this once
+  prec = solve(sigma)
+  means = lapply(1:dim(mean)[1],function(i){mean[i,]})
+  #distval = do.call(rbind, 
+  #                   mclapply(means, 
+  #                            mahalanobis,x = x, cov = prec,inverted = TRUE))
+  distval = do.call(rbind, 
+                     lapply(means, 
+                              mahalanobis,x = x, cov = prec,inverted = TRUE))
+  logdet = sum(log(eigen(sigma, symmetric = TRUE, only.values = TRUE)$values))
+  logretval = -(ncol(x) * log(2 * pi) + logdet + distval)/2
+  
+  if (log) 
+    return(logretval)
+  else 
+    return(exp(logretval))
+}</code></pre>
 <pre class="r"><code>Estep &lt;- function(data, G, para){
   # Your Code
   # Return the n-by-G probability matrix
@@ -419,7 +475,7 @@ summary {
   for (i in 1:nrow(data)){
     # loop through each class c
     for (c in 1:G){
-      pre_r[i,c] = para$prob[c] * dmvnorm(data[i,], para$mean[,c], para$Sigma)
+      pre_r[i,c] = para$prob[c] * densityMvNorm(data[i,], t(as.matrix(para$mean[,c])), para$Sigma)
     }#c      
   }#i
   
@@ -436,27 +492,32 @@ Mstep &lt;- function(data, G, para, post.prob){
   # Your Code
   # Return the updated parameters
   
-  # loop through all class
+
+  # update prob
+  para$prob = apply(post.prob, 2, mean)
+  
+  
   mySigma = matrix(0,G,G)
+  # loop through all class
   for (c in 1:G){
-    
-    # calculate sigma, do this first before updating mean
-    # subtract mean from data and convert to matrix
+
+    # update mean
+    para$mean[,c] = apply(data * post.prob[,c], 2, sum)/ sum(post.prob[,c])
+       
+    # calculate sigma
+    # subtract class mean from data and convert to matrix
     mydata = data.matrix(data - rep(para$mean[,c], rep.int(nrow(data),G)))
     
     mySigma = mySigma + 
       para$prob[c] * t(mydata) %*% mydata
     
-    # update mean
-    para$mean[,c] = apply(data * post.prob[,c], 2, sum)/ sum(post.prob[,c])
-    
-
-    
+ 
   } 
   
   # update Sigma
   para$Sigma = mySigma/nrow(data)
   
+
   para  
 }
 
@@ -523,17 +584,17 @@ para0</code></pre>
 </ul>
 <pre class="r"><code>myEM(data=faithful, itmax=10, G=2, para=para0)</code></pre>
 <pre><code>## $prob
-## [1] 0.4412 0.5588
+## [1] 0.4406 0.5594
 ## 
 ## $mean
 ##             [,1]   [,2]
-## eruptions  3.367  3.583
-## waiting   69.809 71.756
+## eruptions  3.366  3.583
+## waiting   69.806 71.757
 ## 
 ## $Sigma
 ##           eruptions waiting
 ## eruptions      1.31   14.03
-## waiting       14.03  185.10</code></pre>
+## waiting       14.03  185.08</code></pre>
 <ul>
 <li>Output from mclust</li>
 </ul>
