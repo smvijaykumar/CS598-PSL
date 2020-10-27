@@ -130,7 +130,6 @@ Estep <- function(data, G, para){
 Mstep <- function(data, G, para, post.prob){ 
   # Your Code
   # Return the updated parameters
-  
 
   # update prob
   para$prob = apply(post.prob, 2, mean)
@@ -144,14 +143,13 @@ Mstep <- function(data, G, para, post.prob){
     para$mean[,c] = apply(data * post.prob[,c], 2, sum)/ sum(post.prob[,c])
        
     # calculate sigma
-    # subtract class mean from data and convert to matrix
-    mydata = data.matrix(data - rep(para$mean[,c], rep.int(nrow(data),G)))
+    # subtract class mean from data and convert to matrix for each data i
+    for (i in 1:nrow(data)){
+      myDatum = as.matrix(data[i,] - para$mean[,c])
+      mySigma = mySigma + post.prob[i,c] * t(myDatum) %*% myDatum
+    }#i
     
-    mySigma = mySigma + 
-      para$prob[c] * t(mydata) %*% mydata
-    
- 
-  } 
+  }#G
   
   # update Sigma
   para$Sigma = mySigma/nrow(data)
@@ -262,10 +260,11 @@ list(Rout$pro, Rout$mean, Rout$variance$Sigma)
 
 ## Discussion
 
+By following the formula of EM algorithm in lecture with some modification in multi-variate normal pdf and a single sigma for all class, we're able to match with the EM algorithm output of package mclust on faithful dataset.
 
 
 ## Contribution
 
-Vijayakumar Mohan contributes to verification of implementation and enhancement of visualization.
+Vijayakumar Mohan contributes to verification of implementation and derivation of EM formula
 
-Matthew Leung contributes to implementation of LOO-CV/GCV and overall presentation of the report
+Matthew Leung contributes to implementation of EM algorithm and overall presentation of the report

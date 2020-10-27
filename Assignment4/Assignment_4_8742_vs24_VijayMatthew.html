@@ -491,7 +491,6 @@ densityMvNorm = function (x, mean, sigma, log = FALSE)
 Mstep &lt;- function(data, G, para, post.prob){ 
   # Your Code
   # Return the updated parameters
-  
 
   # update prob
   para$prob = apply(post.prob, 2, mean)
@@ -505,14 +504,13 @@ Mstep &lt;- function(data, G, para, post.prob){
     para$mean[,c] = apply(data * post.prob[,c], 2, sum)/ sum(post.prob[,c])
        
     # calculate sigma
-    # subtract class mean from data and convert to matrix
-    mydata = data.matrix(data - rep(para$mean[,c], rep.int(nrow(data),G)))
+    # subtract class mean from data and convert to matrix for each data i
+    for (i in 1:nrow(data)){
+      myDatum = as.matrix(data[i,] - para$mean[,c])
+      mySigma = mySigma + post.prob[i,c] * t(myDatum) %*% myDatum
+    }#i
     
-    mySigma = mySigma + 
-      para$prob[c] * t(mydata) %*% mydata
-    
- 
-  } 
+  }#G
   
   # update Sigma
   para$Sigma = mySigma/nrow(data)
@@ -588,13 +586,13 @@ para0</code></pre>
 ## 
 ## $mean
 ##             [,1]   [,2]
-## eruptions  3.366  3.583
-## waiting   69.806 71.757
+## eruptions  3.337  3.607
+## waiting   69.533 71.972
 ## 
 ## $Sigma
 ##           eruptions waiting
-## eruptions      1.31   14.03
-## waiting       14.03  185.08</code></pre>
+## eruptions      1.28   13.76
+## waiting       13.76  182.68</code></pre>
 <ul>
 <li>Output from mclust</li>
 </ul>
@@ -619,11 +617,12 @@ list(Rout$pro, Rout$mean, Rout$variance$Sigma)</code></pre>
 </div>
 <div id="discussion" class="section level2">
 <h2>Discussion</h2>
+<p>By following the formula of EM algorithm in lecture with some modification in multi-variate normal pdf and a single sigma for all class, we’re able to match with the EM algorithm output of package mclust on faithful dataset.</p>
 </div>
 <div id="contribution" class="section level2">
 <h2>Contribution</h2>
-<p>Vijayakumar Mohan contributes to verification of implementation and enhancement of visualization.</p>
-<p>Matthew Leung contributes to implementation of LOO-CV/GCV and overall presentation of the report</p>
+<p>Vijayakumar Mohan contributes to verification of implementation and derivation of EM formula</p>
+<p>Matthew Leung contributes to implementation of EM algorithm and overall presentation of the report</p>
 </div>
 
 
