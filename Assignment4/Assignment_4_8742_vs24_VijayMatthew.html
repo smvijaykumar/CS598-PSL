@@ -389,6 +389,7 @@ summary {
 <li><a href="#initialization">Initialization</a></li>
 <li><a href="#compare-results">Compare Results</a></li>
 </ul></li>
+<li><a href="#derivation-of-the-e--and-m-steps">Derivation of the E- and M-steps</a></li>
 <li><a href="#discussion">Discussion</a></li>
 <li><a href="#contribution">Contribution</a></li>
 </ul>
@@ -615,14 +616,59 @@ list(Rout$pro, Rout$mean, Rout$variance$Sigma)</code></pre>
 ## waiting   13.763869 182.67737</code></pre>
 </div>
 </div>
+<div id="derivation-of-the-e--and-m-steps" class="section level2">
+<h2>Derivation of the E- and M-steps</h2>
+<p>Density function of Gaussian mixture model which is a combination of pdf’s:</p>
+<p><span class="math inline">\(P(x) = \sum_{k=1}^{K} \pi_k P(x|k)\)</span></p>
+<p><span class="math inline">\(P(x|\theta) = \sum_{k=1}^{K} \pi_k N(x|\mu_k, \Sigma)\)</span></p>
+<p>where</p>
+<ul>
+<li><span class="math inline">\(\theta\)</span> = { <span class="math inline">\(\pi_k, \mu_k, \sigma\)</span>} are the parameters</li>
+<li><span class="math inline">\(\pi_k\)</span> is the mixing weights of mixture component k, and satisfy <span class="math inline">\(0 &lt;= \pi_k &lt;= 1\)</span> and <span class="math inline">\(\sum_{i=1}^{k}\pi_k = 1\)</span><br />
+</li>
+<li><span class="math inline">\(\mu_k\)</span> is mean of mixture component k<br />
+</li>
+<li><span class="math inline">\(\Sigma\)</span> is covariance that share among all K components</li>
+<li>K is number of components<br />
+</li>
+</ul>
+<p>The <strong>incomplete data log likelihood</strong> which is the objective function we aim to maximize:</p>
+<p><span class="math inline">\(l(\theta) = logP(x_{1:N}| \theta)\)</span><br />
+<span class="math inline">\(=\sum_n logP(x_n | \theta)\)</span><br />
+<span class="math inline">\(=\sum_n log \sum_k \pi_k N(x_n|\mu_k, \Sigma)\)</span><br />
+</p>
+<p>This expression is difficult to solve for optimum point because of the summation inside log function.</p>
+<p>Let’s try EM algorithm which assumes each data point <span class="math inline">\(x_n\)</span> has an associated latent indicator variable <span class="math inline">\(Z_n\)</span> belongs to {1,…,K} indicates which component the data point comes from. We can write the <strong>complete data log likelihood</strong> as:</p>
+<p><span class="math inline">\(l_c(\theta) = logP(x_{1:N}, z_{1:N}| \theta)\)</span><br />
+<span class="math inline">\(= \sum_n logP(x_n, Z_n | \theta)\)</span><br />
+<span class="math inline">\(= \sum_n log \Pi_k \pi_kN(x_n | \mu_k, \Sigma)^{I(Z_n =k)}\)</span><br />
+<span class="math inline">\(= \sum_n \sum_k I(Z_n =k)log (\pi_kN(x_n | \mu_k, \Sigma))\)</span><br />
+</p>
+<p>This expression is easier to solve.</p>
+<p><strong>E step</strong> is to compute:</p>
+<p><span class="math inline">\(P(Z_n = k| x_n, \theta^{old}) = r_{nk} = \frac{\pi_kN(x_n|\mu_k,\Sigma)}{\sum_j \pi_jN(x_n|\mu_j, \Sigma)}\)</span></p>
+<p>where <span class="math inline">\(r_{nk}\)</span> is the responsibility of cluster k for data point n</p>
+<p><strong>M step</strong> is to maximizing the expected complete data log likelihood:</p>
+<p><span class="math inline">\(E(l_c(\theta)) = \sum_n P(Z_n|x_n, \theta^{old}) \sum_k I(Z_n =k)log (\pi_kN(x_n | \mu_k, \Sigma))\)</span><br />
+<span class="math inline">\(= \sum_n \sum_k r_{nk}log(\pi_kN(x_n|\mu_k,\Sigma))\)</span> substitute with <span class="math inline">\(r_{nk}\)</span><br />
+<span class="math inline">\(= \sum_n \sum_k r_{nk}log\pi_k + \sum_n \sum_k r_{nk}logN(x_n|\mu_k,\Sigma)\)</span><br />
+<span class="math inline">\(= J(\pi_k) + J(\mu_k, \Sigma)\)</span></p>
+<p>Thus, we can optimize <span class="math inline">\(\pi_k\)</span> with objective function <span class="math inline">\(J(\pi)\)</span>, optimize <span class="math inline">\(\mu_k\)</span> and <span class="math inline">\(\Sigma\)</span> with objective function <span class="math inline">\(J(\mu_k, \Sigma)\)</span> by taking derivative and setting to zero to solve for all parameters.</p>
+<p>From <span class="math inline">\(J(\pi_k)\)</span>, we add Lagrange multiplier to ensure <span class="math inline">\(\sum_k \pi_k = 1\)</span>, take derivative w.r.t <span class="math inline">\(\pi\)</span> and set to zero to solve for <span class="math inline">\(\pi\)</span>.</p>
+<p><span class="math inline">\(\pi_k^{new} = \frac{1}{N} \sum_n r_{nk}\)</span></p>
+<p>From <span class="math inline">\(J(\mu_k, \Sigma)\)</span>, we expand out the Gaussian, take derivative w.r.t <span class="math inline">\(\mu_k\)</span> and <span class="math inline">\(\Sigma\)</span> separately, set zero to solve for <span class="math inline">\(\mu_k\)</span> and <span class="math inline">\(\Sigma\)</span> respectively.</p>
+<p><span class="math inline">\(\mu_k^{new} = \frac{\sum_n r_{nk}x_n}{\sum_n r_{nk}}\)</span><br />
+</p>
+<p><span class="math inline">\(\Sigma^{new} = \frac{\sum_n \sum_k r_{nk} (x_n - \mu_k^{new})(x_n - \mu_k^{new})^T}{n}\)</span></p>
+</div>
 <div id="discussion" class="section level2">
 <h2>Discussion</h2>
 <p>By following the formula of EM algorithm in lecture with some modification in multi-variate normal pdf and a single sigma for all class, we’re able to match with the EM algorithm output of package mclust on faithful dataset.</p>
 </div>
 <div id="contribution" class="section level2">
 <h2>Contribution</h2>
-<p>Vijayakumar Mohan contributes to verification of implementation and derivation of EM formula</p>
-<p>Matthew Leung contributes to implementation of EM algorithm and overall presentation of the report</p>
+<p>Vijayakumar Mohan contributes to verification of implementation and derivation of EM formula and overall presentation of the report.</p>
+<p>Matthew Leung contributes to implementation and derivation of EM algorithm.</p>
 </div>
 
 

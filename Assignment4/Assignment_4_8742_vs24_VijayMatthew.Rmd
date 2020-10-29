@@ -15,6 +15,7 @@ urlcolor: cyan
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 options(scipen = 1, digits = 7, width = 80, fig.align = "center")
 set.seed(8742)
+library(mclust)
 ```
 
 ## Introduction
@@ -256,6 +257,72 @@ list(Rout$pro, Rout$mean, Rout$variance$Sigma)
 
 ```
 
+## Derivation of the E- and M-steps
+
+Density function of Gaussian mixture model which is a combination of pdf's:
+
+$P(x) = \sum_{k=1}^{K} \pi_k P(x|k)$
+
+$P(x|\theta) = \sum_{k=1}^{K} \pi_k N(x|\mu_k, \Sigma)$
+
+where
+
+- $\theta$ = { $\pi_k, \mu_k, \sigma$} are the parameters
+- $\pi_k$ is the mixing weights of mixture component k, and satisfy $0 <= \pi_k <= 1$ and $\sum_{i=1}^{k}\pi_k = 1$ \
+- $\mu_k$ is mean of mixture component k \
+- $\Sigma$ is covariance that share among all K components
+- K is number of components \
+
+
+The **incomplete data log likelihood** which is the objective function we aim to maximize:
+
+$l(\theta) = logP(x_{1:N}| \theta)$ \
+          $=\sum_n logP(x_n | \theta)$ \
+          $=\sum_n log \sum_k \pi_k N(x_n|\mu_k, \Sigma)$ \
+          
+This expression is difficult to solve for optimum point because of the summation inside log function.
+          
+Let's try EM algorithm which assumes each data point $x_n$ has an associated latent indicator variable $Z_n$ belongs to {1,...,K} indicates which component the data point comes from. We can write the **complete data log likelihood** as:
+
+$l_c(\theta) = logP(x_{1:N}, z_{1:N}| \theta)$ \
+            $= \sum_n logP(x_n, Z_n | \theta)$ \
+            $= \sum_n log \Pi_k \pi_kN(x_n | \mu_k, \Sigma)^{I(Z_n =k)}$ \
+            $= \sum_n \sum_k I(Z_n =k)log (\pi_kN(x_n | \mu_k, \Sigma))$ \
+
+This expression is easier to solve.
+
+**E step** is to compute:
+
+$P(Z_n = k| x_n, \theta^{old}) = r_{nk} = \frac{\pi_kN(x_n|\mu_k,\Sigma)}{\sum_j \pi_jN(x_n|\mu_j, \Sigma)}$
+
+where $r_{nk}$ is the responsibility of cluster k for data point n
+
+
+**M step** is to maximizing the expected complete data log likelihood:
+
+$E(l_c(\theta)) = \sum_n P(Z_n|x_n, \theta^{old}) \sum_k I(Z_n =k)log (\pi_kN(x_n | \mu_k, \Sigma))$ \
+$= \sum_n \sum_k r_{nk}log(\pi_kN(x_n|\mu_k,\Sigma))$ substitute with $r_{nk}$ \
+$= \sum_n \sum_k r_{nk}log\pi_k + \sum_n \sum_k r_{nk}logN(x_n|\mu_k,\Sigma)$ \
+$= J(\pi_k) + J(\mu_k, \Sigma)$
+
+Thus, we can optimize $\pi_k$ with objective function $J(\pi)$, optimize $\mu_k$ and $\Sigma$ with objective function $J(\mu_k, \Sigma)$ by taking derivative and setting to zero to solve for all parameters.
+
+From $J(\pi_k)$, we add Lagrange multiplier to ensure $\sum_k \pi_k = 1$, take derivative w.r.t $\pi$ and set to zero to solve for $\pi$.
+
+$\pi_k^{new} = \frac{1}{N} \sum_n r_{nk}$
+
+From $J(\mu_k, \Sigma)$, we expand out the Gaussian, take derivative w.r.t $\mu_k$ and $\Sigma$ separately, set zero to solve for $\mu_k$ and $\Sigma$ respectively.
+
+$\mu_k^{new} = \frac{\sum_n r_{nk}x_n}{\sum_n r_{nk}}$ \
+
+
+$\Sigma^{new} = \frac{\sum_n \sum_k r_{nk} (x_n - \mu_k^{new})(x_n - \mu_k^{new})^T}{n}$
+
+
+
+
+
+
 
 
 ## Discussion
@@ -265,6 +332,6 @@ By following the formula of EM algorithm in lecture with some modification in mu
 
 ## Contribution
 
-Vijayakumar Mohan contributes to verification of implementation and derivation of EM formula
+Vijayakumar Mohan contributes to verification of implementation and derivation of EM formula and overall presentation of the report.
 
-Matthew Leung contributes to implementation of EM algorithm and overall presentation of the report
+Matthew Leung contributes to implementation and derivation of EM algorithm.
