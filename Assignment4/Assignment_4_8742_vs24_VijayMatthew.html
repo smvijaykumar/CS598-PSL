@@ -562,17 +562,17 @@ ini0 &lt;- mstep(modelName=&quot;EEE&quot;, faithful , Z)$parameters</code></pre
               Sigma = ini0$variance$Sigma)
 para0</code></pre>
 <pre><code>## $prob
-## [1] 0.4412 0.5588
+## [1] 0.4411765 0.5588235
 ## 
 ## $mean
-##             [,1]   [,2]
-## eruptions  3.351  3.595
-## waiting   69.700 71.842
+##                [,1]     [,2]
+## eruptions  3.351367  3.59548
+## waiting   69.700000 71.84211
 ## 
 ## $Sigma
-##           eruptions waiting
-## eruptions     1.283    13.8
-## waiting      13.797   183.0</code></pre>
+##           eruptions  waiting
+## eruptions  1.283247  13.7975
+## waiting   13.797499 183.0125</code></pre>
 </div>
 <div id="compare-results" class="section level3">
 <h3>Compare Results</h3>
@@ -582,17 +582,17 @@ para0</code></pre>
 </ul>
 <pre class="r"><code>myEM(data=faithful, itmax=10, G=2, para=para0)</code></pre>
 <pre><code>## $prob
-## [1] 0.4406 0.5594
+## [1] 0.4406115 0.5593885
 ## 
 ## $mean
-##             [,1]   [,2]
-## eruptions  3.337  3.607
-## waiting   69.533 71.972
+##                [,1]      [,2]
+## eruptions  3.336538  3.606914
+## waiting   69.532595 71.971801
 ## 
 ## $Sigma
-##           eruptions waiting
-## eruptions      1.28   13.76
-## waiting       13.76  182.68</code></pre>
+##           eruptions   waiting
+## eruptions  1.279921  13.76387
+## waiting   13.763869 182.67737</code></pre>
 <ul>
 <li>Output from mclust</li>
 </ul>
@@ -602,17 +602,17 @@ para0</code></pre>
 
 list(Rout$pro, Rout$mean, Rout$variance$Sigma)</code></pre>
 <pre><code>## [[1]]
-## [1] 0.4406 0.5594
+## [1] 0.4406115 0.5593885
 ## 
 ## [[2]]
-##             [,1]   [,2]
-## eruptions  3.337  3.607
-## waiting   69.533 71.972
+##                [,1]      [,2]
+## eruptions  3.336538  3.606914
+## waiting   69.532595 71.971801
 ## 
 ## [[3]]
-##           eruptions waiting
-## eruptions      1.28   13.76
-## waiting       13.76  182.68</code></pre>
+##           eruptions   waiting
+## eruptions  1.279921  13.76387
+## waiting   13.763869 182.67737</code></pre>
 </div>
 </div>
 <div id="discussion" class="section level2">
