@@ -43,7 +43,7 @@ library(kableExtra)
 
 - Our approach was an extension to the solution(III) provided by the professor which trains the linear model for each Store, Dept combination. We use the historical weekly sales data to predict future Weekly_Sales (response variable Y) by Store/Dept combination. 
 
-- The idea is to predict each week by the same week from last year for each combination of Store/Dept. Since we train each linear model with only data from the same Store and Dept, we don't need to include Store/Dept in the predictor. Since we predict each week by the same week from last year, if this week is holiday week, this week last year was also holiday week. Thus, the linear model doesn't need to include IsHoliday as predictor. 
+- Since we train each linear model with only data from the same Store and Dept, we don't need to include Store/Dept in the predictor.
 
 - We derive two predictors, namely "Yr" and "Wk", from original data column Date. "Wk" is the number of the week in each year starting from 1 to 52(or 53). "Yr" is the year from data column Date. We train a linear regression model: sqrt(Y) ~ Yr + Wk for each combination of Store/Dept. We apply square root transformation to response variable Y to reduce skewness of data. It inflates smaller Y but stabilizes bigger Y. 
 
