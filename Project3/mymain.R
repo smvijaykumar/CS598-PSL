@@ -10,8 +10,7 @@ suppressPackageStartupMessages({
   library(slam)
 })
 
-j = 1
-setwd(paste("split_", j, sep=""))
+
 myvocab <- scan(file = "myvocab.txt", what = character())
 
 train = read.table("train.tsv",
