@@ -10,7 +10,6 @@ suppressPackageStartupMessages({
   library(slam)
 })
 
-
 myvocab <- scan(file = "myvocab.txt", what = character())
 
 train = read.table("train.tsv",
@@ -18,6 +17,9 @@ train = read.table("train.tsv",
                    header = TRUE)
 
 vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,2L)))
+it_train = itoken(train$review,
+                  preprocessor = tolower, 
+                  tokenizer = word_tokenizer)
 
 dtm_train = create_dtm(it_train, vectorizer)
 
