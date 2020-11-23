@@ -10,9 +10,20 @@ output:
 urlcolor: cyan
 ---
 
-```{r setup, include=FALSE}
+
+
+## Introduction
+
+We are provided with a dataset consisting of 50,000 IMDB movie reviews, where each review is labelled as positive or negative. The goal is to build a binary classification model to predict the sentiment of a movie review.
+
+One crucial step of building this binary classification model is to extract a set of vocabulary so we can use it to convert each review into a DT (DocumentTerm) matrix before fitting in classification model. This R mark down document is focused on how to come up with the set of vocabulary.
+
+
+
+```{r setup, include=FALSE, echo = FALSE}
+
 knitr::opts_chunk$set(
-	echo = TRUE,
+	echo = FALSE,
 	message = FALSE,
 	warning = FALSE
 )
@@ -31,7 +42,11 @@ library(slam)
 library(SnowballC)
 ```
 
-```{r eval=FALSE}
+## Prepare for training/test splits
+
+Generate the five sets of training/test splits with each set (3 files: train.tsv, test.tsv, test_y.tsv) stored in a subfolder.
+
+```{r echo=FALSE}
 data <- read.table("alldata.tsv", stringsAsFactors = FALSE, header = TRUE)
 testIDs <- read.csv("splits_F20.csv", header = TRUE)
 for(j in 1:5){
@@ -58,7 +73,15 @@ for(j in 1:5){
 }
 ```
 
-```{r}
+## Construction of vocabulary
+
+### Define stop words and filter them out of our movie reviews
+
+We define a set of stop words are the words that doesn't not have information for our classification task. We will filter them out first.
+
+"i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "their", "they", "his", "her", "she", "he", "a", "an", "and","is", "was", "are", "were", "him", "himself", "has", "have", "who","when","where","why","it", "its", "the", "us"
+
+```{r echo=FALSE}
 stop_words = c("i", "me", "my", "myself", 
                "we", "our", "ours", "ourselves", 
                "you", "your", "yours", 
@@ -74,12 +97,21 @@ stpw2 = tm::stopwords("en")
 
 ```
 
+### Construct DT (DocumentTerm) matrix
 
-```{r message=FALSE, warning=FALSE}
-```
+Construct DT (Document Term) matrix (maximum 4-grams) by using 'text2vec' R package. 
 
+- HTML tags are removed from the movie review first
 
-```{r message=FALSE, warning=FALSE}
+- We define stem tokenizer using SnowballC::wordStem() to tokenize movie review in stem form of word, e.g. stem word of both "winning" and "winner" has stem word of "win"
+
+- build vocab list by stem tokenizer with maximum 4-grams
+
+- prune vocab list by only taking term count minimal of 10, and filter out terms that has too high or too low proportion of documents which contain the term.
+
+- The resulting vocab size is 30K+ which is the number of columns in DT matrix.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 j = 4
 #setwd(paste("split_", j, sep=""))
 
@@ -127,8 +159,12 @@ stem_tokenizer =function(x) {
 
 ```
 
+#### Method 1 : trim vocab size to 2K by Lasso 
 
-```{r}
+The glmnet output contains many sets of estimated beta values corresponding to different lambda values. In particular, "$df" tells us the number of non-zero beta values (i.e., df) for each of the estimates. We picked the largest df among those less than 2K, and store the corresponding words in "myvocab".
+
+
+```{r echo=FALSE}
 set.seed(8742)
 
  tmpfit = glmnet(x = dtm_train, 
@@ -141,19 +177,28 @@ set.seed(8742)
  write_lines(myvocab,"myvocab.txt")
 ```
 
+We rebuild DT matrix with LASSO reduced 2000 vocab. However, we find some these LASSO reduced vocab is not quite interpretable, e.g. "ryan", "fulci", "jimmi_stewart". We will try another method to find more interpretable vocab list.
 
-
-```{r}
+```{r echo=FALSE}
  #write.csv(myvocab2,file="myvocab.txt",quote = FALSE)
  #myvocab <- scan(file = "myvocab.txt", what = character())
- vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,4L)))
+ vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,3L)))
  
- dtm_train = create_dtm(it_train, vectorizer)
+ dtm_train_lasso = create_dtm(it_train, vectorizer)
 ```
 
+#### Method 2 : two-sample t-test
+
+Method 2 to extract top 2K more interpretable vocab by two-sample t-test (store in myvocab2). We use the original DT matrix with 30K+ columns as input.
+
+- compute two-sample t-statistic of two population X and Y to determine the chance of have same mean for each 30K+ columns
+
+t-statistics = $\frac{\bar{X} - \bar{Y}}{(s_x^2/m + s_y^2/n)^{0.5}}$
+
+- order words by the magnitude of their t-statistics and picked the top 2000 words, which are then divided into two lists: top 1000 positive words and top 1000 negative words. 
 
 
-```{r}
+```{r echo=FALSE}
 v.size = dim(dtm_train)[2]
 ytrain = train$sentiment
 summ = matrix(0,nrow=v.size,ncol = 4)
@@ -168,7 +213,7 @@ myp = (summ[,1] - summ[,3]) / sqrt(summ[,2]/n1 + summ[,4]/n0)
 
 ```
 
-```{r}
+```{r echo=FALSE}
 words = colnames(dtm_train)
 id = order(abs(myp),decreasing=TRUE)[1:2000]
 pos.list = words[id[myp[id] > 0]]
@@ -178,14 +223,20 @@ myvocab2 = c(pos.list,neg.list)
 write_lines(myvocab2,"myvocab.txt")
 ```
 
-```{r}
+- Reconstruct DT matrix with the new 2K more interpretable vocabs with maximum 3-grams. We notice 2-grams is not enough to represent the true sentiment in some cases, e.g. watch_this in 2-grams means totally opposite in not_watch_this in 3-grams. 
 
-vectorizer = vocab_vectorizer(create_vocabulary(myvocab2,ngram = c(1L,4L)))
+```{r echo=FALSE}
+
+vectorizer = vocab_vectorizer(create_vocabulary(myvocab2,ngram = c(1L,3L)))
  
 dtm_train = create_dtm(it_train, vectorizer)
 ```
 
-```{r}
+- Trim 2K vocab to 1K by LASSO and store it to myvocab2
+
+- This final 1K vocab list is more interpretable. We will use this to train Ridge logistic regression model
+
+```{r echo=FALSE}
  tmpfit = glmnet(x = dtm_train, 
                 y = train$sentiment, 
                 alpha = 1,
@@ -195,10 +246,15 @@ dtm_train = create_dtm(it_train, vectorizer)
  write_lines(myvocab,"myvocab.txt")
 ```
 
+## Train Ridge logistic regression model by using 1K more interpretable vocabs
 
-```{r}
+- use cross validation to find optimal lambda using cv.glmnet()
+
+- train Ridge logistic model with the 1K vocab DT matrix with optimal lambda value
+
+```{r echo=FALSE}
  myvocab <- scan(file = "myvocab.txt", what = character())
- vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,4L)))
+ vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,3L)))
  
  dtm_train = create_dtm(it_train, vectorizer)
 
@@ -215,9 +271,15 @@ dtm_train = create_dtm(it_train, vectorizer)
 
 ```
 
+## Test AUC on all 5 splits
 
 
-```{r}
+
+```{r echo=FALSE}
+
+start.time = Sys.time()
+
+test_auc = rep(0, 5)
 
 for(j in 1:5) {
  #path = paste("C:/Users/Ranjini/GitHub/CS598-PSL/CS598-PSL/project3/split_", j, sep="")
@@ -248,11 +310,26 @@ for(j in 1:5) {
  pred = merge(pred, test.y, by="id")
  roc_obj = roc(pred$sentiment, pred$prob)
  tmp = pROC::auc(roc_obj)
- print(round(tmp,4))
+ 
+ test_auc[j] = tmp
+# print(round(tmp,4))
 }
+
+end.time = Sys.time()
+
+```
+- Test AUC result on 5 splits
+
+```{r echo=FALSE}
+results = data.frame(Split=seq(1,5), Test_AUC=test_auc)
+
+knitr::kable(results)
 ```
 
-```{r}
+- Running time: System: MSI laptop, Intel i5, 2.0GHz, 8GB, Win 10
 
+```{r}
+results1 = data.frame(Run.Time=(end.time-start.time))
+knitr::kable(results1)
 ```
 

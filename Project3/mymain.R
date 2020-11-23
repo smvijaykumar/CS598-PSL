@@ -22,7 +22,7 @@ train = read.table("train.tsv",
                    stringsAsFactors = FALSE,
                    header = TRUE)
 
-vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,4L)))
+vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,3L)))
 it_train = itoken(train$review,
                   preprocessor = tolower, 
                   tokenizer = stem_tokenizer)
