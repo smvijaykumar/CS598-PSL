@@ -8,7 +8,13 @@ suppressPackageStartupMessages({
   library(text2vec)
   library(tm)
   library(slam)
+  library(SnowballC)
 })
+
+# stem tokenizer 
+stem_tokenizer =function(x) {
+  lapply(word_tokenizer(x), SnowballC::wordStem, language="en")
+}
 
 myvocab <- scan(file = "myvocab.txt", what = character())
 
@@ -16,10 +22,10 @@ train = read.table("train.tsv",
                    stringsAsFactors = FALSE,
                    header = TRUE)
 
-vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,2L)))
+vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,4L)))
 it_train = itoken(train$review,
                   preprocessor = tolower, 
-                  tokenizer = word_tokenizer)
+                  tokenizer = stem_tokenizer)
 
 dtm_train = create_dtm(it_train, vectorizer)
 
@@ -41,7 +47,7 @@ test$review <- gsub('<.*?>', ' ', test$review)
 
 it_test = itoken(test$review,
                  preprocessor = tolower, 
-                 tokenizer = word_tokenizer)
+                 tokenizer = stem_tokenizer)
 
 dtm_test = create_dtm(it_test, vectorizer)
 
@@ -56,4 +62,4 @@ pred = read.table("mysubmission.txt", header = TRUE)
 pred = merge(pred, test.y, by="id")
 roc_obj = roc(pred$sentiment, pred$prob)
 tmp = pROC::auc(roc_obj)
-print(round(tmp,2))
+print(round(tmp,4))
