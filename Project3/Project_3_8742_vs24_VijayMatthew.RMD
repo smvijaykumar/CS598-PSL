@@ -28,10 +28,11 @@ library(pROC)
 library(text2vec)
 library(tm)
 library(slam)
+library(SnowballC)
 ```
 
 ```{r eval=FALSE}
-data <- read.table("/Users/vsitham/Downloads/project3/alldata.tsv", stringsAsFactors = FALSE, header = TRUE)
+data <- read.table("alldata.tsv", stringsAsFactors = FALSE, header = TRUE)
 testIDs <- read.csv("splits_F20.csv", header = TRUE)
 for(j in 1:5){
   dir.create(paste("split_", j, sep=""))
@@ -80,9 +81,9 @@ stpw2 = tm::stopwords("en")
 
 ```{r message=FALSE, warning=FALSE}
 j = 4
-setwd(paste("split_", j, sep=""))
+#setwd(paste("split_", j, sep=""))
 
-train = read.table("train.tsv",
+train = read.table("alldata.tsv",
                    stringsAsFactors = FALSE,
                    header = TRUE)
  #train$review = stringr::str_trunc(train$review, 1000)
@@ -93,11 +94,15 @@ train = read.table("train.tsv",
  #train$review = str_replace_all(train$review, "[[:punct:]]", " ")
  #train$review = gsub('\\b\\w{1,2}\\s','',train$review)
  
+ # stem tokenizer 
+stem_tokenizer =function(x) {
+  lapply(word_tokenizer(x), SnowballC::wordStem, language="en")
+}
  
  
  it_train = itoken(train$review,
                     preprocessor = tolower, 
-                    tokenizer = word_tokenizer)
+                    tokenizer = stem_tokenizer)
  
 
  
@@ -141,7 +146,7 @@ set.seed(8742)
 ```{r}
  #write.csv(myvocab2,file="myvocab.txt",quote = FALSE)
  #myvocab <- scan(file = "myvocab.txt", what = character())
- vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,2L)))
+ vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,4L)))
  
  dtm_train = create_dtm(it_train, vectorizer)
 ```
@@ -175,7 +180,7 @@ write_lines(myvocab2,"myvocab.txt")
 
 ```{r}
 
-vectorizer = vocab_vectorizer(create_vocabulary(myvocab2,ngram = c(1L,2L)))
+vectorizer = vocab_vectorizer(create_vocabulary(myvocab2,ngram = c(1L,4L)))
  
 dtm_train = create_dtm(it_train, vectorizer)
 ```
@@ -193,7 +198,7 @@ dtm_train = create_dtm(it_train, vectorizer)
 
 ```{r}
  myvocab <- scan(file = "myvocab.txt", what = character())
- vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,2L)))
+ vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,4L)))
  
  dtm_train = create_dtm(it_train, vectorizer)
 
@@ -215,9 +220,9 @@ dtm_train = create_dtm(it_train, vectorizer)
 ```{r}
 
 for(j in 1:5) {
- path = paste("C:/Users/Ranjini/GitHub/CS598-PSL/CS598-PSL/project3/split_", j, sep="")
- setwd(path)
- test = read.table("test.tsv",
+ #path = paste("C:/Users/Ranjini/GitHub/CS598-PSL/CS598-PSL/project3/split_", j, sep="")
+ #setwd(path)
+ test = read.table(paste("split_",j,"/test.tsv", sep=""),
                     stringsAsFactors = FALSE,
                     header = TRUE)
  test$review <- gsub('<.*?>', ' ', test$review)
@@ -229,7 +234,7 @@ for(j in 1:5) {
 
  it_test = itoken(test$review,
                    preprocessor = tolower, 
-                   tokenizer = word_tokenizer)
+                   tokenizer = stem_tokenizer)
 
  dtm_test = create_dtm(it_test, vectorizer)
  
@@ -238,12 +243,12 @@ for(j in 1:5) {
  write.table(output, file = "mysubmission.txt", 
             row.names = FALSE, sep='\t')
   
- test.y = read.table("test_y.tsv", header = TRUE)
+ test.y = read.table(paste("split_",j,"/test_y.tsv", sep=""), header = TRUE)
  pred = read.table("mysubmission.txt", header = TRUE)
  pred = merge(pred, test.y, by="id")
  roc_obj = roc(pred$sentiment, pred$prob)
  tmp = pROC::auc(roc_obj)
- print(round(tmp,2))
+ print(round(tmp,4))
 }
 ```
 
