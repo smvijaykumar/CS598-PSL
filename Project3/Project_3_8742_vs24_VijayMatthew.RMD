@@ -21,7 +21,6 @@ One crucial step of building this binary classification model is to extract a se
 
 
 ```{r setup, include=FALSE, echo = FALSE}
-
 knitr::opts_chunk$set(
 	echo = FALSE,
 	message = FALSE,
@@ -90,10 +89,6 @@ stop_words = c("i", "me", "my", "myself",
                "is", "was", "are", "were", 
                "him", "himself", "has", "have", "who","when","where","why",
                "it", "its", "the", "us")
-stpw2 = tm::stopwords("en")
-#stpw2 = stopwords::stopwords(language = "en",source = "nltk")                   # tm package stop word list; tokenizer package has the same name function
-#comn  = unique(c(stpw1, stpw2))                 # Union of two list
-#stop_words = unique(gsub("'"," ",comn))  # final stop word lsit after removing punctuation
 
 ```
 
@@ -111,10 +106,11 @@ Construct DT (Document Term) matrix (maximum 4-grams) by using 'text2vec' R pack
 
 - The resulting vocab size is 30K+ which is the number of columns in DT matrix.
 
+- We used custom stop_words instead of stop_words available in the tm package. If we use we lose many words and wouldn't able to meet the benchmark.
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 j = 4
 #setwd(paste("split_", j, sep=""))
-
 train = read.table("alldata.tsv",
                    stringsAsFactors = FALSE,
                    header = TRUE)
@@ -136,15 +132,12 @@ stem_tokenizer =function(x) {
                     preprocessor = tolower, 
                     tokenizer = stem_tokenizer)
  
-
  
  tmp.vocab = create_vocabulary(it_train, 
                               stopwords = stop_words, 
                               ngram = c(1L,4L))
-
  tmp.vocab = prune_vocabulary(tmp.vocab, term_count_min = 10,
                              doc_proportion_max = 0.5,doc_proportion_min = 0.001)
-
  vectorizer = vocab_vectorizer(tmp.vocab)
  #vectorizer = hash_vectorizer(2 ^ 18, c(1L, 2L))
  
@@ -156,7 +149,6 @@ stem_tokenizer =function(x) {
  # tfidf = TfIdf$new(smooth_idf = TRUE)
   # fit model to train data and transform train data with fitted model
 #  dtm_train_tfidf = fit_transform(dtm_train, tfidf)
-
 ```
 
 #### Method 1 : trim vocab size to 2K by Lasso 
@@ -166,7 +158,6 @@ The glmnet output contains many sets of estimated beta values corresponding to d
 
 ```{r echo=FALSE}
 set.seed(8742)
-
  tmpfit = glmnet(x = dtm_train, 
                 y = train$sentiment, 
                 alpha = 1,
@@ -210,7 +201,6 @@ n1 = sum(ytrain)
 n = length(ytrain)
 n0 = n - n1
 myp = (summ[,1] - summ[,3]) / sqrt(summ[,2]/n1 + summ[,4]/n0)
-
 ```
 
 ```{r echo=FALSE}
@@ -223,10 +213,36 @@ myvocab2 = c(pos.list,neg.list)
 write_lines(myvocab2,"myvocab.txt")
 ```
 
+- Top 10 Positive and Negative Words
+
+```{r}
+library(kableExtra)
+top_10_tbl = data.frame(Positive_Words=pos.list[1:10],Negative_Words=neg.list[1:10])
+top_10_tbl %>%
+  kbl() %>%
+kable_material(c("striped", "hover"))
+```
+
+- Comparison of selected Positive and Negative words in WordCloud
+
+```{r}
+library(wordcloud)
+pos.m = cbind(pos.list,myp[id[myp[id] > 0]],rep(0,length(pos.list)))
+neg.m = cbind(neg.list,rep(0,length(neg.list)),myp[id[myp[id] < 0]])
+tdm = rbind(pos.m,neg.m)
+tdm.df = as.data.frame(tdm)
+colnames(tdm.df) = c('word','Positive','Negative')
+rownames(tdm.df) = tdm.df[,1]
+tdm.df[,1] = NULL
+tdm.df$Positive = as.numeric(tdm.df$Positive)
+tdm.df$Negative = as.numeric(tdm.df$Negative)
+tdm1 = as.matrix(tdm.df)
+comparison.cloud(tdm1, random.order=FALSE, colors = c("blue","indianred3"), title.size=2.5, max.words=300)
+```
+
 - Reconstruct DT matrix with the new 2K more interpretable vocabs with maximum 3-grams. We notice 2-grams is not enough to represent the true sentiment in some cases, e.g. watch_this in 2-grams means totally opposite in not_watch_this in 3-grams. 
 
 ```{r echo=FALSE}
-
 vectorizer = vocab_vectorizer(create_vocabulary(myvocab2,ngram = c(1L,3L)))
  
 dtm_train = create_dtm(it_train, vectorizer)
@@ -234,7 +250,7 @@ dtm_train = create_dtm(it_train, vectorizer)
 
 - Trim 2K vocab to 1K by LASSO and store it to myvocab2
 
-- This final 1K vocab list is more interpretable. We will use this to train Ridge logistic regression model
+- This final 1K vocab list is more interpretable. There are no names in the list. We will use this to train Ridge logistic regression model
 
 ```{r echo=FALSE}
  tmpfit = glmnet(x = dtm_train, 
@@ -246,18 +262,18 @@ dtm_train = create_dtm(it_train, vectorizer)
  write_lines(myvocab,"myvocab.txt")
 ```
 
-## Train Ridge logistic regression model by using 1K more interpretable vocabs
+## Train Ridge logistic regression model by using 1K interpretable vocabulary words
 
 - use cross validation to find optimal lambda using cv.glmnet()
 
 - train Ridge logistic model with the 1K vocab DT matrix with optimal lambda value
 
 ```{r echo=FALSE}
+ train_start = Sys.time()
  myvocab <- scan(file = "myvocab.txt", what = character())
  vectorizer = vocab_vectorizer(create_vocabulary(myvocab,ngram = c(1L,3L)))
  
  dtm_train = create_dtm(it_train, vectorizer)
-
  mylogit.cv = cv.glmnet(x = dtm_train, 
                          y = train$sentiment, 
                          alpha = 0,
@@ -268,7 +284,7 @@ dtm_train = create_dtm(it_train, vectorizer)
                        alpha = 0,
                        lambda = mylogit.cv$lambda.min, 
                        family='binomial')
-
+ train_end = Sys.time()
 ```
 
 ## Test AUC on all 5 splits
@@ -276,14 +292,9 @@ dtm_train = create_dtm(it_train, vectorizer)
 
 
 ```{r echo=FALSE}
-
 start.time = Sys.time()
-
 test_auc = rep(0, 5)
-
 for(j in 1:5) {
- #path = paste("C:/Users/Ranjini/GitHub/CS598-PSL/CS598-PSL/project3/split_", j, sep="")
- #setwd(path)
  test = read.table(paste("split_",j,"/test.tsv", sep=""),
                     stringsAsFactors = FALSE,
                     header = TRUE)
@@ -293,11 +304,9 @@ for(j in 1:5) {
  #test$review = str_replace_all(test$review, "[[:punct:]]", " ")
  #test$review = gsub('\\b\\w{1,2}\\s','',test$review)
  #test$review = gsub('[[:digit:]]+', '', test$review)
-
  it_test = itoken(test$review,
                    preprocessor = tolower, 
                    tokenizer = stem_tokenizer)
-
  dtm_test = create_dtm(it_test, vectorizer)
  
  mypred = predict(mylogit.fit, dtm_test, type = "response")
@@ -314,22 +323,20 @@ for(j in 1:5) {
  test_auc[j] = tmp
 # print(round(tmp,4))
 }
-
 end.time = Sys.time()
-
 ```
 - Test AUC result on 5 splits
 
 ```{r echo=FALSE}
 results = data.frame(Split=seq(1,5), Test_AUC=test_auc)
-
-knitr::kable(results)
+results %>%
+  kbl() %>%
+kable_material(c("striped", "hover"))
 ```
 
 - Running time: System: MSI laptop, Intel i5, 2.0GHz, 8GB, Win 10
 
 ```{r}
-results1 = data.frame(Run.Time=(end.time-start.time))
-knitr::kable(results1)
+results1 = data.frame(Run.Time.Test=(end.time-start.time),Run.Time.Train=(train_end-train_start))
+results1 %>% kbl() %>% kable_material(c("striped", "hover"))
 ```
-
