@@ -39,13 +39,15 @@ library(text2vec)
 library(tm)
 library(slam)
 library(SnowballC)
+library(kableExtra)
+library(knitr)
 ```
 
 ## Prepare for training/test splits
 
 Generate the five sets of training/test splits with each set (3 files: train.tsv, test.tsv, test_y.tsv) stored in a subfolder.
 
-```{r echo=FALSE}
+```{r eval=FALSE, echo=FALSE}
 data <- read.table("alldata.tsv", stringsAsFactors = FALSE, header = TRUE)
 testIDs <- read.csv("splits_F20.csv", header = TRUE)
 for(j in 1:5){
@@ -216,11 +218,10 @@ write_lines(myvocab2,"myvocab.txt")
 - Top 10 Positive and Negative Words
 
 ```{r}
-library(kableExtra)
 top_10_tbl = data.frame(Positive_Words=pos.list[1:10],Negative_Words=neg.list[1:10])
 top_10_tbl %>%
-  kbl() %>%
-kable_material(c("striped", "hover"))
+  knitr::kable() %>%
+kable_styling(latex_options = c("striped", "hover"))
 ```
 
 - Comparison of selected Positive and Negative words in WordCloud
@@ -330,13 +331,14 @@ end.time = Sys.time()
 ```{r echo=FALSE}
 results = data.frame(Split=seq(1,5), Test_AUC=test_auc)
 results %>%
-  kbl() %>%
-kable_material(c("striped", "hover"))
+  kable() %>%
+kable_styling(latex_options = c("striped", "hover"))
 ```
 
 - Running time: System: MSI laptop, Intel i5, 2.0GHz, 8GB, Win 10
 
 ```{r}
 results1 = data.frame(Run.Time.Test=(end.time-start.time),Run.Time.Train=(train_end-train_start))
-results1 %>% kbl() %>% kable_material(c("striped", "hover"))
+results1 %>% kable() %>%
+kable_styling(latex_options = c("striped", "hover"))
 ```
