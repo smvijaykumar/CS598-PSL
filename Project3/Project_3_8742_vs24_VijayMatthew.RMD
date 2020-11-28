@@ -215,7 +215,7 @@ myvocab2 = c(pos.list,neg.list)
 write_lines(myvocab2,"myvocab.txt")
 ```
 
-- Top 10 Positive and Negative Words
+#### Top 10 Positive and Negative Words
 
 ```{r}
 top_10_tbl = data.frame(Positive_Words=pos.list[1:10],Negative_Words=neg.list[1:10])
@@ -224,7 +224,7 @@ top_10_tbl %>%
 kable_styling(latex_options = c("striped", "hover"))
 ```
 
-- Comparison of selected Positive and Negative words in WordCloud
+#### Comparison of selected Positive and Negative words in WordCloud
 
 ```{r}
 library(wordcloud)
@@ -326,7 +326,7 @@ for(j in 1:5) {
 }
 end.time = Sys.time()
 ```
-- Test AUC result on 5 splits
+
 
 ```{r echo=FALSE}
 results = data.frame(Split=seq(1,5), Test_AUC=test_auc)
@@ -335,7 +335,7 @@ results %>%
 kable_styling(latex_options = c("striped", "hover"))
 ```
 
-- Running time: System: MSI laptop, Intel i5, 2.0GHz, 8GB, Win 10
+#### Running time: System: MSI laptop, Intel i5, 2.0GHz, 8GB, Win 10
 
 ```{r}
 results1 = data.frame(Run.Time.Test=(end.time-start.time),Run.Time.Train=(train_end-train_start))
