@@ -29,12 +29,12 @@ genre_matrix[1,] <- genrelist
 genre_matrix
 colnames(genre_matrix) <- genrelist##giving the column names with genre list
 genre_matrix
-ncol(genres_new)
+ncol(genre_new)
 
 
-for (i in 1:nrow(genres_new)) {
-  for (c in 1:ncol(genres_new)) {
-    genremat_col = which(genre_matrix[1,] == genres_new[i,c])
+for (i in 1:nrow(genre_new)) {
+  for (c in 1:ncol(genre_new)) {
+    genremat_col = which(genre_matrix[1,] == genre_new[i,c])
     genre_matrix[i+1,genremat_col] <- 1
   }
 }## i is the number of rows in genre2,c is the number of col in genre2. Compare genre_matrix with genre2 and enter value 1

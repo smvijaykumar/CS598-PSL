@@ -11,18 +11,13 @@ genre_list <- c("Select","Action", "Adventure", "Animation", "Children",
 
 #shiny code to display web page
 shinyUI(fluidPage(
-  wellPanel("Movie Recommendation Search Engine"),
-  shinythemes::themeSelector(),
-  #tags$style("body {background: url(https://i.ytimg.com/vi/ifVEMkQ9BaY/maxresdefault.jpg) no-repeat center center fixed; 
-  # background-size: cover;   filter:grayscale(100%);}"),
-  
+  wellPanel("Movie Recommendation Engine - System 1"),
+  #shinythemes::themeSelector(),
   tags$style("body {background: url(http://www.wallpaperup.com/wallpaper/download/858715) no-repeat center center fixed; 
              background-size: cover;   filter:grayscale(100%);}"),
-  
-  
   fluidRow(
     
-    column(4, wellPanel(h3("Select Movie Genres You Prefer (order matters):")),
+    column(4, wellPanel(h3("Select Movie Genres You Like :")),
            wellPanel(
              selectInput("input_genre", "Genre #1",
                          genre_list),
@@ -49,6 +44,4 @@ shinyUI(fluidPage(
              #verbatimTextOutput("dynamic_value")
            ))
   )
-  
-  
 ))

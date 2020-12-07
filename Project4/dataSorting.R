@@ -1,26 +1,27 @@
-install.packages("proxy")
 library(proxy)
-install.packages("recommender lab")
 library(recommenderlab)
-install.packages("reshape2")
 library(reshape2)
-movies <- read.csv("movies.csv", header = TRUE, stringsAsFactors=FALSE)
-ratings <- read.csv("ratings.csv", header = TRUE)
-movies_new <- movies[-which((movies$movieId %in% ratings$movieId) == FALSE),]
-nrow(movies)
-nrow(movies_new)
+#movies <- read.csv("movies.csv", header = TRUE, stringsAsFactors=FALSE)
+#ratings <- read.csv("ratings.csv", header = TRUE)
+#movies_new <- movies[-which((movies$MovieID %in% ratings$MovieID) == FALSE),]
+#nrow(movies)
+#nrow(movies_new)
+movies_new = movies
 movie_recommendation <- function(input,input2,input3) {
-  row_num <- which(movies_new[,2] == input) ## finding riw number
+  row_num <- which(movies_new[,2] == input) 
   row_num2 <- which(movies_new[,2] == input2)
   row_num3 <- which(movies_new[,2] == input3)
-  userSelect <- matrix(NA,10325)
+  
+  ratingmatrix <- dcast(ratings, UserID~MovieID, value.var = "Rating", na.rm=FALSE)
+  ratingmatrix <- ratingmatrix[,-1]
+  
+  userSelect <- matrix(NA,ncol(ratingmatrix))
   userSelect[row_num] <- 5 #hard code first selection to rating 5
   userSelect[row_num2] <- 4 #hard code second selection to rating 4
   userSelect[row_num3] <- 3 #hard code third selection to rating 3
   userSelect <- t(userSelect)
   
-  ratingmatrix <- dcast(ratings, userId~movieId, value.var = "rating", na.rm=FALSE)
-  ratingmatrix <- ratingmatrix[,-1]
+
   colnames(userSelect) <- colnames(ratingmatrix)
   ratingmatrix_new <- rbind(userSelect,ratingmatrix)
   ratingmatrix_new <- as.matrix(ratingmatrix_new)
@@ -43,7 +44,7 @@ movie_recommendation <- function(input,input2,input3) {
   } else {
     for (i in c(1:10)){
       recom_result[i,1] <- as.character(subset(movies, 
-                        movies$movieId == as.integer(recom_list[[1]][i]))$title)
+                                               movies$MovieID == as.integer(recom_list[[1]][i]))$Title)
     }
     colnames(recom_result) <- "User-Based Collaborative Filtering Recommended Titles"
     return(recom_result)
