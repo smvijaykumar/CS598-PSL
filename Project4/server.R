@@ -4,7 +4,7 @@ library(shiny)
 library(proxy)
 library(recommenderlab)
 library(reshape2)
-
+library(data.table)
 
 myurl = "https://liangfgithub.github.io/MovieData/"
 
@@ -61,7 +61,7 @@ movies = loadMovieData()
 ratings <- read.csv("ratings.csv")
 movies <- movies[-which((movies$MovieID %in% ratings$MovieID) == FALSE),]
 
-source("dataSorting.R")
+source("recommendation.R")
 
 formatInput <- function(v,a,d){
   c(v,a,d)
@@ -69,6 +69,18 @@ formatInput <- function(v,a,d){
 
 shinyServer(function(input, output) {
 
+  observeEvent( input$reset, {
+    
+      output$ui4 <- renderUI(NULL)
+      output$table2 <- renderUI(NULL)
+      output$ui <- renderUI(NULL)
+      output$ui2 <- renderUI(NULL)
+      output$ui3 <- renderUI(NULL)
+      output$ui31 <- renderUI(NULL)
+      output$table <- renderUI(NULL)
+  
+  })
+  
   output$ui <- renderUI({
     if (input$input_genre == 'Select')
       return()

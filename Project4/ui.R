@@ -11,10 +11,9 @@ genre_list <- c("Select","Action", "Adventure", "Animation", "Childrens",
 
 #shiny code to display web page
 shinyUI(fluidPage(
-  tabsetPanel(
+  tabsetPanel( id = "tabs",
     tabPanel("System-1",
               wellPanel("Movie Recommendation Engine - System 1"),
-              #shinythemes::themeSelector(),
               tags$style("body {background: url(http://www.wallpaperup.com/wallpaper/download/858715) no-repeat center center fixed; 
                          background-size: cover;   filter:grayscale(100%);}"),
               fluidRow(
@@ -40,7 +39,7 @@ shinyUI(fluidPage(
                         
                        )),
                 column(4,
-                       wellPanel(h3("You Might Like The Following Movies!")),
+                       wellPanel(h4("You Might Like The Following Movies!")),
                        wellPanel(
                          tableOutput("table")
                         
@@ -51,12 +50,12 @@ shinyUI(fluidPage(
     tabPanel("System-2",wellPanel("Movie Recommendation Engine - System 2"),
              fluidRow(
                
-               column(3, wellPanel(h3("Select Movie Genres You Like")),
+               column(3, wellPanel(h4("Select Movie Genres You Like")),
                      wellPanel(tableOutput("ui4"))
                       ),
                
                column(9,
-                      wellPanel(h3("You Might Like The Following Movies!")),
+                      wellPanel(h4("You Might Like The Following Movies!")),
                       wellPanel(tableOutput("table2"))
                )
              )
