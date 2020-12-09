@@ -4,15 +4,13 @@ library(shiny)
 library(proxy)
 library(recommenderlab)
 library(reshape2)
-source("dataSorting.R")
+
 
 myurl = "https://liangfgithub.github.io/MovieData/"
 
-
-
 loadRatingData = function() {
   # use colClasses = 'NULL' to skip columns
-  ratings = read.csv(paste0(myurl, 'ratings.dat?raw=true'), 
+  ratings = read.csv('ratings.dat', 
                      sep = ':',
                      colClasses = c('integer', 'NULL'), 
                      header = FALSE)
@@ -20,8 +18,15 @@ loadRatingData = function() {
   ratings
 }
 
+#static array for genre list
+genre_list <- c("Select","Action", "Adventure", "Animation", "Childrens", 
+                "Comedy", "Crime","Documentary", "Drama", "Fantasy",
+                "Film.Noir", "Horror", "Musical", "Mystery","Romance",
+                "Sci.Fi", "Thriller", "War", "Western")
+
+
 loadMovieData = function() {
-  movies = readLines(paste0(myurl, 'movies.dat?raw=true'))
+  movies = readLines('movies.dat')
   movies = strsplit(movies, split = "::", fixed = TRUE, useBytes = TRUE)
   movies = matrix(unlist(movies), ncol = 3, byrow = TRUE)
   movies = data.frame(movies, stringsAsFactors = FALSE)
@@ -37,16 +42,11 @@ loadMovieData = function() {
   movies$Year = as.numeric(unlist(
     lapply(movies$Title, function(x) substr(x, nchar(x)-4, nchar(x)-1))))
   
-  genres = as.data.frame(movies$Genres, stringsAsFactors=FALSE)
+  genres = as.data.frame(gsub("'","",movies$Genres), stringsAsFactors=FALSE)
   tmp = as.data.frame(tstrsplit(genres[,1], '[|]',
                                 type.convert=TRUE),
                       stringsAsFactors=FALSE)
-  genre_list = c("Action", "Adventure", "Animation", 
-                 "Children's", "Comedy", "Crime",
-                 "Documentary", "Drama", "Fantasy",
-                 "Film-Noir", "Horror", "Musical", 
-                 "Mystery", "Romance", "Sci-Fi", 
-                 "Thriller", "War", "Western")
+
   m = length(genre_list)
   genre_matrix = matrix(0, nrow(movies), length(genre_list))
   for(i in 1:nrow(tmp)){
@@ -61,20 +61,22 @@ movies = loadMovieData()
 ratings <- read.csv("ratings.csv")
 movies <- movies[-which((movies$MovieID %in% ratings$MovieID) == FALSE),]
 
+source("dataSorting.R")
+
 formatInput <- function(v,a,d){
-  ## This function formats the user's input of Valence-Arousal-Dominance
-  ## and outputs them as a vector
-  
   c(v,a,d)
 }
 
 shinyServer(function(input, output) {
-  
+
   output$ui <- renderUI({
-    if (is.null(input$input_genre))
+    if (input$input_genre == 'Select')
       return()
+
     #switch-case to display movies
-    switch(input$input_genre,
+    fluidRow(
+      column(8,
+        switch(input$input_genre,
            "Select" = tags$p("Select Genre #1 first to display movie list."),
            "Action" = selectInput("select", "Movie of Genre #1",
                                   choices = sort(subset(movies, Action == 1)$Title),
@@ -85,9 +87,9 @@ shinyServer(function(input, output) {
            "Animation" =  selectInput("select", "Movie of Genre #1",
                                       choices = sort(subset(movies, Animation == 1)$Title),
                                       selected = sort(subset(movies, Animation == 1)$Title)[1]),
-           "Children" =  selectInput("select", "Movie of Genre #1",
-                                     choices = sort(subset(movies, Children == 1)$Title),
-                                     selected = sort(subset(movies, Children == 1)$Title)[1]),
+           "Childrens" =  selectInput("select", "Movie of Genre #1",
+                                     choices = sort(subset(movies, Childrens == 1)$Title),
+                                     selected = sort(subset(movies, Childrens == 1)$Title)[1]),
            "Comedy" =  selectInput("select", "Movie of Genre #1",
                                    choices = sort(subset(movies, Comedy == 1)$Title),
                                    selected = sort(subset(movies, Comedy == 1)$Title)[1]),
@@ -130,14 +132,18 @@ shinyServer(function(input, output) {
            "Western" = selectInput("select", "Movie of Genre #1",
                                    choices = sort(subset(movies, Western == 1)$Title),
                                    selected = sort(subset(movies, Western == 1)$Title)[1])
-    )
+           
+        )),column(4,
+              numericInput("select_rating","Provide Rating(1 to 5)",value = "")))
   })
   
   output$ui2 <- renderUI({
-    if (is.null(input$input_genre2))
+    if (input$input_genre2 == 'Select')
       return()
-    
-    switch(input$input_genre2,
+
+    fluidRow(
+      column(8,
+        switch(input$input_genre2,
            "Select" = tags$p("Select Genre #2 first to display movie list."),
            "Action" = selectInput("select2", "Movie of Genre #2",
                                   choices = sort(subset(movies, Action == 1)$Title),
@@ -148,9 +154,9 @@ shinyServer(function(input, output) {
            "Animation" =  selectInput("select2", "Movie of Genre #2",
                                       choices = sort(subset(movies, Animation == 1)$Title),
                                       selected = sort(subset(movies, Animation == 1)$Title)[1]),
-           "Children" =  selectInput("select2", "Movie of Genre #2",
-                                     choices = sort(subset(movies, Children == 1)$Title),
-                                     selected = sort(subset(movies, Children == 1)$Title)[1]),
+           "Childrens" =  selectInput("select2", "Movie of Genre #2",
+                                     choices = sort(subset(movies, Childrens == 1)$Title),
+                                     selected = sort(subset(movies, Childrens == 1)$Title)[1]),
            "Comedy" =  selectInput("select2", "Movie of Genre #2",
                                    choices = sort(subset(movies, Comedy == 1)$Title),
                                    selected = sort(subset(movies, Comedy == 1)$Title)[1]),
@@ -193,14 +199,16 @@ shinyServer(function(input, output) {
            "Western" = selectInput("select2", "Movie of Genre #2",
                                    choices = sort(subset(movies, Western == 1)$Title),
                                    selected = sort(subset(movies, Western == 1)$Title)[1])
-    )
+        )), column(4,
+                  numericInput("select2_rating","Provide Rating(1 to 5)",value = "")))
   })
   
   output$ui3 <- renderUI({
-    if (is.null(input$input_genre3))
+    if (input$input_genre3 == 'Select')
       return()
-    
-    switch(input$input_genre3,
+    fluidRow(
+      column(8,
+        switch(input$input_genre3,
            
            "Select" = tags$p("Select Genre #3 first to display movie list."),
            "Action" = selectInput("select3", "Movie of Genre #3",
@@ -212,9 +220,9 @@ shinyServer(function(input, output) {
            "Animation" =  selectInput("select3", "Movie of Genre #3",
                                       choices = sort(subset(movies, Animation == 1)$Title),
                                       selected = sort(subset(movies, Animation == 1)$Title)[1]),
-           "Children" =  selectInput("select3", "Movie of Genre #3",
-                                     choices = sort(subset(movies, Children == 1)$Title),
-                                     selected = sort(subset(movies, Children == 1)$Title)[1]),
+           "Childrens" =  selectInput("select3", "Movie of Genre #3",
+                                     choices = sort(subset(movies, Childrens == 1)$Title),
+                                     selected = sort(subset(movies, Childrens == 1)$Title)[1]),
            "Comedy" =  selectInput("select3", "Movie of Genre #3",
                                    choices = sort(subset(movies, Comedy == 1)$Title),
                                    selected = sort(subset(movies, Comedy == 1)$Title)[1]),
@@ -257,12 +265,51 @@ shinyServer(function(input, output) {
            "Western" = selectInput("select3", "Movie of Genre #3",
                                    choices = sort(subset(movies, Western == 1)$Title),
                                    selected = sort(subset(movies, Western == 1)$Title)[1])
+           
+    )), column(4,
+    numericInput("select3_rating","Provide Rating(1 to 5)",value = "")))
+  })
+  output$ui31 = renderUI({
+    if (is.null(input$select) && is.null(input$select2) && is.null(input$select3))
+      return()
+    fluidRow(column(3,actionButton("recBtn","Rate and Get Recommendation")))
+  })
+  
+  output$ui4 <- renderUI({
+    
+    wellPanel(
+      selectInput("select4", "Genre #1",
+                  genre_list),
+      selectInput("select5", "Genre #2",
+                  genre_list),
+      selectInput("select6", "Genre #3",
+                  genre_list)
     )
+     
+  })
+  final_output <- reactiveValues()
+  
+  observeEvent(input$recBtn, {
+    final_output$rec_ucbf <- movie_recommendation(input$select, input$select2, 
+                                                  input$select3,
+                                                  input$select_rating,
+                                                  input$select2_rating,
+                                                  input$select3_rating)
+    })
+  #to display output data
+  output$table <- renderTable({
+    if (is.null(input$select) && is.null(input$select2) && is.null(input$select3))
+      return()
+    if(!is.null(final_output$rec_ucbf))
+      return(final_output$rec_ucbf)
   })
   
   #to display output data
-  output$table <- renderTable({
-    movie_recommendation(input$select, input$select2, input$select3)
+  output$table2 <- renderTable({
+    if (is.null(input$select4) && is.null(input$select5) && is.null(input$select6))
+      return()
+    if(input$select4 != "Select" || input$select5 != "Select" || input$select6 != "Select")
+      movie_recommendation_popular(input$select4, input$select5, input$select6)
   })
   
   output$dynamic_value <- renderPrint({
