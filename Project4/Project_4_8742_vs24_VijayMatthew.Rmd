@@ -495,7 +495,71 @@ POPULAR_RMSE
 ```
 
 
-#### Genre based - Higly rated
+#### Genre based - Highly rated
+
+
+- Train a genre based recommender system by popularity using R package [recommenderlab]
+
+```{r}
+rec_RERECOMMEND = Recommender(Rmat, method = 'RERECOMMEND',
+                          parameter = list(randomize = 1, minRating = 1))
+
+#Summary of model parameters
+rec_RERECOMMEND@model
+```
+
+- Make prediction on the test data
+
+First let's predict all un-rated movies for the first three users in the training data. No information for users not in the training data; the coldstart issue. 
+
+```{r}
+# predict ratings for the first three users
+RERECOMMEND_recom = predict(rec_RERECOMMEND, 
+                Rmat[1:3], type = 'ratings')
+```
+
+We display the original and predicted ratings of the first 10 movies for the three users. Note that the final prediction could still have missing values. 
+
+```{r}
+as(RERECOMMEND_recom, 'matrix')[, 1:10]
+as(Rmat, 'matrix')[1:3, 1:10]
+```
+
+
+
+- Evaluation with RMSE
+
+```{r, eval=TRUE}
+# This may take a long time
+RERECOMMEND_recom = predict(rec_RERECOMMEND, 
+                Rmat, type = 'ratings')  
+RERECOMMEND_rec_list = as(RERECOMMEND_recom, 'list')  # each element are ratings of that user
+
+RERECOMMEND_test.pred = test
+RERECOMMEND_test.pred$rating = NA
+
+```
+
+```{r}
+
+# For all lines in test file, one by one
+for (u in 1:nrow(test)){
+
+    # Read userid and movieid from columns 2 and 3 of test data
+    userid = as.integer(test$UserID[u])
+    movieid = as.integer(test$MovieID[u])
+    
+    rating = RERECOMMEND_rec_list[[userid]][movieid]
+    # handle missing values; 2.5 might not be the ideal choice
+    RERECOMMEND_test.pred$rating[u] = ifelse(is.na(rating), 2.5, rating)
+}
+
+# Calculate RMSE
+RERECOMMEND_RMSE = sqrt(mean((test$Rating - RERECOMMEND_test.pred$rating)^2)) 
+RERECOMMEND_RMSE
+```
+
+
 
 
 
@@ -660,7 +724,7 @@ IBCF_RMSE
 RMSE Comparison of different System and scheme
 
 ```{r}
-results = data.frame("System I: Popular" = POPULAR_RMSE, "System I: Highly Rated" =0, "System II: UBCF"= UBCF_RMSE, "System II: IBCF"= IBCF_RMSE)
+results = data.frame("System I: Popular" = POPULAR_RMSE, "System I: Highly Rated" = RERECOMMEND_RMSE, "System II: UBCF"= UBCF_RMSE, "System II: IBCF"= IBCF_RMSE)
 
 kable(results)
 ```
