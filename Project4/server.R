@@ -69,18 +69,6 @@ formatInput <- function(v,a,d){
 
 shinyServer(function(input, output) {
 
-  observeEvent( input$reset, {
-    
-      output$ui4 <- renderUI(NULL)
-      output$table2 <- renderUI(NULL)
-      output$ui <- renderUI(NULL)
-      output$ui2 <- renderUI(NULL)
-      output$ui3 <- renderUI(NULL)
-      output$ui31 <- renderUI(NULL)
-      output$table <- renderUI(NULL)
-  
-  })
-  
   output$ui <- renderUI({
     if (input$input_genre == 'Select')
       return()

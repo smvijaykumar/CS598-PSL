@@ -1,6 +1,8 @@
 #ui.R
 library(shiny)
 library(shinythemes)
+library(dplyr)
+library(shinycssloaders)
 
 
 #static array for genre list
@@ -12,8 +14,24 @@ genre_list <- c("Select","Action", "Adventure", "Animation", "Childrens",
 #shiny code to display web page
 shinyUI(fluidPage(
   tabsetPanel( id = "tabs",
-    tabPanel("System-1",
-              wellPanel("Movie Recommendation Engine - System 1"),
+     tabPanel("System-1",wellPanel("Movie Recommendation Engine - System 1"),
+              tags$style("body {background: url(http://www.wallpaperup.com/wallpaper/download/858715) no-repeat center center fixed; 
+                         background-size: cover;   filter:grayscale(100%);}"),
+              fluidRow(
+                
+                column(3, wellPanel(h4("Select Movie Genres You Like")),
+                       wellPanel(tableOutput("ui4"))
+                ),
+                
+                column(9,
+                       wellPanel(h4("You Might Like The Following Highly Rated Movies!")),
+                       wellPanel(tableOutput("table2") %>% withSpinner(color="#0dc5c1")) 
+                )
+              )
+     ),        
+               
+    tabPanel("System-2",
+              wellPanel("Movie Recommendation Engine - System 2"),
               tags$style("body {background: url(http://www.wallpaperup.com/wallpaper/download/858715) no-repeat center center fixed; 
                          background-size: cover;   filter:grayscale(100%);}"),
               fluidRow(
@@ -35,30 +53,17 @@ shinyUI(fluidPage(
                          uiOutput("ui"),
                          uiOutput("ui2"),
                          uiOutput("ui3"),
-                         uiOutput("ui31")
+                         uiOutput("ui31") 
                         
                        )),
                 column(4,
                        wellPanel(h4("You Might Like The Following Movies!")),
                        wellPanel(
-                         tableOutput("table")
+                         tableOutput("table") 
                         
                        ))
               )
-      ),
+      )
     
-    tabPanel("System-2",wellPanel("Movie Recommendation Engine - System 2"),
-             fluidRow(
-               
-               column(3, wellPanel(h4("Select Movie Genres You Like")),
-                     wellPanel(tableOutput("ui4"))
-                      ),
-               
-               column(9,
-                      wellPanel(h4("You Might Like The Following Movies!")),
-                      wellPanel(tableOutput("table2"))
-               )
-             )
-    )
   )
 ))
