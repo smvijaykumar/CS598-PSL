@@ -3004,8 +3004,10 @@ summary {
 <li><a href="#train-and-test-split">Train and Test Split</a></li>
 <li><a href="#recommender-system">Recommender System</a><ul>
 <li><a href="#first-create-a-utility-matrix-stroed-as-a-sparse-matrix">First create a Utility matrix stroed as a Sparse matrix</a></li>
-<li><a href="#system-i">System I</a></li>
-<li><a href="#system-ii">System II</a></li>
+<li><a href="#system-ia---genre-based-popular">System Ia - Genre based (Popular)</a></li>
+<li><a href="#system-ib---genre-based-highly-rated">System Ib - Genre based (Highly rated)</a></li>
+<li><a href="#system-iia---user-based-collaborative-filtering">System IIa - User-Based Collaborative Filtering</a></li>
+<li><a href="#system-iib---item-based-collaborative-filtering">System IIb - Item-based Collaborative Filtering</a></li>
 </ul></li>
 <li><a href="#summary">Summary</a></li>
 </ul>
@@ -3061,8 +3063,8 @@ colnames(ratings) = c(&#39;UserID&#39;, &#39;MovieID&#39;, &#39;Rating&#39;, &#3
 # TO DO: comment out the following line before submit. It is to limit the number of ratings item to speed up testing
 ratings = ratings[1:100000,]</code></pre>
 <pre class="r"><code>write.csv(ratings,file=&quot;ratings.csv&quot;,quote=FALSE,row.names = FALSE)</code></pre>
-<div id="htmlwidget-e848e608c61885af218a" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-e848e608c61885af218a">{"x":{"filter":"none","data":[["1","2","3","4","5","6"],[1,1,1,1,1,1],[1193,661,914,3408,2355,1197],[5,3,3,4,5,3],[978300760,978302109,978301968,978300275,978824291,978302268]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>UserID<\/th>\n      <th>MovieID<\/th>\n      <th>Rating<\/th>\n      <th>Timestamp<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":false,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,2,3,4]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-c89237ff8327eaa95622" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c89237ff8327eaa95622">{"x":{"filter":"none","data":[["1","2","3","4","5","6"],[1,1,1,1,1,1],[1193,661,914,3408,2355,1197],[5,3,3,4,5,3],[978300760,978302109,978301968,978300275,978824291,978302268]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>UserID<\/th>\n      <th>MovieID<\/th>\n      <th>Rating<\/th>\n      <th>Timestamp<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":false,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,2,3,4]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 <div id="movies-data" class="section level3">
 <h3>movies data</h3>
@@ -3085,8 +3087,8 @@ movies$Year = as.numeric(unlist(
   lapply(movies$Title, function(x) substr(x, nchar(x)-4, nchar(x)-1))))</code></pre>
 <pre class="r"><code>write.csv(movies,file=&quot;movies.csv&quot;,quote=FALSE)</code></pre>
 <pre class="r"><code># movies = movies[&#39;Genres&#39;].str.get_dummies(&#39;|&#39;)</code></pre>
-<div id="htmlwidget-10791d81410bb36c8520" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-10791d81410bb36c8520">{"x":{"filter":"none","data":[["1","2","3","4","5","6"],[1,2,3,4,5,6],["Toy Story (1995)","Jumanji (1995)","Grumpier Old Men (1995)","Waiting to Exhale (1995)","Father of the Bride Part II (1995)","Heat (1995)"],["Animation|Children's|Comedy","Adventure|Children's|Fantasy","Comedy|Romance","Comedy|Drama","Comedy","Action|Crime|Thriller"],[1995,1995,1995,1995,1995,1995]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>MovieID<\/th>\n      <th>Title<\/th>\n      <th>Genres<\/th>\n      <th>Year<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":false,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,4]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-e4ae742949c16b8d6940" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-e4ae742949c16b8d6940">{"x":{"filter":"none","data":[["1","2","3","4","5","6"],[1,2,3,4,5,6],["Toy Story (1995)","Jumanji (1995)","Grumpier Old Men (1995)","Waiting to Exhale (1995)","Father of the Bride Part II (1995)","Heat (1995)"],["Animation|Children's|Comedy","Adventure|Children's|Fantasy","Comedy|Romance","Comedy|Drama","Comedy","Action|Crime|Thriller"],[1995,1995,1995,1995,1995,1995]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>MovieID<\/th>\n      <th>Title<\/th>\n      <th>Genres<\/th>\n      <th>Year<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":false,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,4]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 <div id="user-data" class="section level3">
 <h3>user data</h3>
@@ -3094,8 +3096,8 @@ movies$Year = as.numeric(unlist(
                  sep = &#39;:&#39;, header = FALSE)
 users = users[, -c(2,4,6,8)] # skip columns
 colnames(users) = c(&#39;UserID&#39;, &#39;Gender&#39;, &#39;Age&#39;, &#39;Occupation&#39;, &#39;Zip-code&#39;)</code></pre>
-<div id="htmlwidget-16959d46663e377be2f6" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-16959d46663e377be2f6">{"x":{"filter":"none","data":[["1","2","3","4","5","6"],[1,2,3,4,5,6],["F","M","M","M","M","F"],[1,56,25,45,25,50],[10,16,15,7,20,9],["48067","70072","55117","02460","55455","55117"]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>UserID<\/th>\n      <th>Gender<\/th>\n      <th>Age<\/th>\n      <th>Occupation<\/th>\n      <th>Zip-code<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":false,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,3,4]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-a010f2ffd4b591a2f61a" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-a010f2ffd4b591a2f61a">{"x":{"filter":"none","data":[["1","2","3","4","5","6"],[1,2,3,4,5,6],["F","M","M","M","M","F"],[1,56,25,45,25,50],[10,16,15,7,20,9],["48067","70072","55117","02460","55455","55117"]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>UserID<\/th>\n      <th>Gender<\/th>\n      <th>Age<\/th>\n      <th>Occupation<\/th>\n      <th>Zip-code<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":false,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[1,3,4]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 <p>For users, <code>Gender</code> is denoted by “M” for male and “F” for female, <code>Age</code> is chosen from the following ranges:</p>
 <pre><code>*  1:  &quot;Under 18&quot;
 * 18:  &quot;18-24&quot;
@@ -3238,8 +3240,8 @@ ratings %&gt;%
             escape = FALSE, 
             options = list(dom = &#39;t&#39;,
                           scrollX = TRUE, autoWidth = TRUE))</code></pre>
-<div id="htmlwidget-f4738dcb74d590509c0a" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-f4738dcb74d590509c0a">{"x":{"filter":"none","data":[[],[],[],[]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Image<\/th>\n      <th>Title<\/th>\n      <th>ave_ratings<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":true,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":3},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-43c52da7dca6b845d047" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-43c52da7dca6b845d047">{"x":{"filter":"none","data":[[],[],[],[]],"container":"<table class=\"nowrap hover row-border\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Image<\/th>\n      <th>Title<\/th>\n      <th>ave_ratings<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","scrollX":true,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":3},{"orderable":false,"targets":0}],"order":[],"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 <div id="dist-of-genres" class="section level3">
 <h3>Dist of Genres</h3>
@@ -3375,10 +3377,8 @@ Rmat = new(&#39;realRatingMatrix&#39;, data = Rmat)</code></pre>
 <pre class="r"><code>dim(Rmat)</code></pre>
 <pre><code>## [1]  669 3194</code></pre>
 </div>
-<div id="system-i" class="section level3">
-<h3>System I</h3>
-<div id="genre-based---popular" class="section level4">
-<h4>Genre based - Popular</h4>
+<div id="system-ia---genre-based-popular" class="section level3">
+<h3>System Ia - Genre based (Popular)</h3>
 <ul>
 <li>Train a genre based recommender system by popularity using R package [recommenderlab]</li>
 </ul>
@@ -3402,8 +3402,8 @@ rec_POPULAR@model</code></pre>
 ## 
 ## function (x, na.rm = FALSE, dims = 1, ...) 
 ## standardGeneric(&quot;colMeans&quot;)
-## &lt;bytecode: 0x00000000366a6538&gt;
-## &lt;environment: 0x0000000015d6bb40&gt;
+## &lt;bytecode: 0x00000000324128d8&gt;
+## &lt;environment: 0x0000000015d0ec40&gt;
 ## Methods may be defined for arguments: x
 ## Use  showMethods(&quot;colMeans&quot;)  for currently available ones.
 ## 
@@ -3412,8 +3412,8 @@ rec_POPULAR@model</code></pre>
 ## 
 ## function (x, na.rm = FALSE, dims = 1, ...) 
 ## standardGeneric(&quot;colSums&quot;)
-## &lt;bytecode: 0x0000000036683108&gt;
-## &lt;environment: 0x0000000015de8d48&gt;
+## &lt;bytecode: 0x00000000324144e8&gt;
+## &lt;environment: 0x0000000015d9bca0&gt;
 ## Methods may be defined for arguments: x
 ## Use  showMethods(&quot;colSums&quot;)  for currently available ones.
 ## 
@@ -3445,12 +3445,15 @@ POPULAR_recom = predict(rec_POPULAR,
 <li>Evaluation with RMSE</li>
 </ul>
 <pre class="r"><code># This may take a long time
+start.time = Sys.time()
 POPULAR_recom = predict(rec_POPULAR, 
                 Rmat, type = &#39;ratings&#39;)  
 POPULAR_rec_list = as(POPULAR_recom, &#39;list&#39;)  # each element are ratings of that user
 
 POPULAR_test.pred = test
-POPULAR_test.pred$rating = NA</code></pre>
+POPULAR_test.pred$rating = NA
+
+POPULAR_time = Sys.time() - start.time</code></pre>
 <pre class="r"><code># For all lines in test file, one by one
 for (u in 1:nrow(test)){
 
@@ -3464,12 +3467,10 @@ for (u in 1:nrow(test)){
 }
 
 # Calculate RMSE
-POPULAR_RMSE = sqrt(mean((test$Rating - POPULAR_test.pred$rating)^2)) 
-POPULAR_RMSE</code></pre>
-<pre><code>## [1] 1.407415</code></pre>
+POPULAR_RMSE = sqrt(mean((test$Rating - POPULAR_test.pred$rating)^2)) </code></pre>
 </div>
-<div id="genre-based---highly-rated" class="section level4">
-<h4>Genre based - Highly rated</h4>
+<div id="system-ib---genre-based-highly-rated" class="section level3">
+<h3>System Ib - Genre based (Highly rated)</h3>
 <ul>
 <li>Train a genre based recommender system by popularity using R package [recommenderlab]</li>
 </ul>
@@ -3865,12 +3866,15 @@ RERECOMMEND_recom = predict(rec_RERECOMMEND,
 <li>Evaluation with RMSE</li>
 </ul>
 <pre class="r"><code># This may take a long time
+start.time = Sys.time()
 RERECOMMEND_recom = predict(rec_RERECOMMEND, 
                 Rmat, type = &#39;ratings&#39;)  
 RERECOMMEND_rec_list = as(RERECOMMEND_recom, &#39;list&#39;)  # each element are ratings of that user
 
 RERECOMMEND_test.pred = test
-RERECOMMEND_test.pred$rating = NA</code></pre>
+RERECOMMEND_test.pred$rating = NA
+
+RERECOMMEND_time = Sys.time() - start.time</code></pre>
 <pre class="r"><code># For all lines in test file, one by one
 for (u in 1:nrow(test)){
 
@@ -3888,11 +3892,8 @@ RERECOMMEND_RMSE = sqrt(mean((test$Rating - RERECOMMEND_test.pred$rating)^2))
 RERECOMMEND_RMSE</code></pre>
 <pre><code>## [1] 1.573666</code></pre>
 </div>
-</div>
-<div id="system-ii" class="section level3">
-<h3>System II</h3>
-<div id="user-based-collaborative-filtering" class="section level4">
-<h4>User-Based Collaborative Filtering</h4>
+<div id="system-iia---user-based-collaborative-filtering" class="section level3">
+<h3>System IIa - User-Based Collaborative Filtering</h3>
 <ul>
 <li>Train a user-based collaborative filtering recommender system using R package [recommenderlab]</li>
 </ul>
@@ -3954,12 +3955,15 @@ UBCF_recom = predict(rec_UBCF,
 <li>Evaluation with RMSE</li>
 </ul>
 <pre class="r"><code># This may take a long time
+start.time = Sys.time()
 UBCF_recom = predict(rec_UBCF, 
                 Rmat, type = &#39;ratings&#39;)  
 UBCF_rec_list = as(UBCF_recom, &#39;list&#39;)  # each element are ratings of that user
 
 UBCF_test.pred = test
-UBCF_test.pred$rating = NA</code></pre>
+UBCF_test.pred$rating = NA
+
+UBCF_time = Sys.time() - start.time</code></pre>
 <pre class="r"><code># For all lines in test file, one by one
 for (u in 1:nrow(test)){
 
@@ -3978,8 +3982,8 @@ UBCF_RMSE</code></pre>
 <pre><code>## [1] 1.569883</code></pre>
 <pre class="r"><code># recommenderRegistry$get_entry_names()</code></pre>
 </div>
-<div id="item-based-collaborative-filtering" class="section level4">
-<h4>Item-based Collaborative Filtering</h4>
+<div id="system-iib---item-based-collaborative-filtering" class="section level3">
+<h3>System IIb - Item-based Collaborative Filtering</h3>
 <ul>
 <li>Train Item-based collaborative filtering recommender system using R package recommenderLab</li>
 </ul>
@@ -7197,12 +7201,15 @@ dim(recc_matrix)</code></pre>
 <li>Evaluation with RMSE</li>
 </ul>
 <pre class="r"><code># This may take a long time
+start.time = Sys.time()
 IBCF_recom = predict(rec_IBCF, 
                 Rmat, type = &#39;ratings&#39;)  
 IBCF_rec_list = as(IBCF_recom, &#39;list&#39;)  # each element are ratings of that user
 
 IBCF_test.pred = test
-IBCF_test.pred$rating = NA</code></pre>
+IBCF_test.pred$rating = NA
+
+IBCF_time = Sys.time() - start.time</code></pre>
 <pre class="r"><code># For all lines in test file, one by one
 for (u in 1:nrow(test)){
 
@@ -7221,13 +7228,9 @@ IBCF_RMSE</code></pre>
 <pre><code>## [1] 1.512522</code></pre>
 </div>
 </div>
-</div>
 <div id="summary" class="section level2">
 <h2>Summary</h2>
 <p>RMSE Comparison of different System and scheme</p>
-<pre class="r"><code>results = data.frame(&quot;System I: Popular&quot; = POPULAR_RMSE, &quot;System I: Highly Rated&quot; = RERECOMMEND_RMSE, &quot;System II: UBCF&quot;= UBCF_RMSE, &quot;System II: IBCF&quot;= IBCF_RMSE)
-
-kable(results)</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -7243,6 +7246,25 @@ kable(results)</code></pre>
 <td align="right">1.573666</td>
 <td align="right">1.569883</td>
 <td align="right">1.512522</td>
+</tr>
+</tbody>
+</table>
+<p>Prediction running time Comparison of different System and scheme</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">System.I..Popular</th>
+<th align="left">System.I..Highly.Rated</th>
+<th align="left">System.II..UBCF</th>
+<th align="left">System.II..IBCF</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1.477436 secs</td>
+<td align="left">0.0290339 secs</td>
+<td align="left">12.16677 secs</td>
+<td align="left">0.796988 secs</td>
 </tr>
 </tbody>
 </table>

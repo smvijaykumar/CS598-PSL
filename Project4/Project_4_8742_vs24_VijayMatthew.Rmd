@@ -429,9 +429,8 @@ dim(Rmat)
 
 
 
-### System I
+### System Ia - Genre based (Popular)
 
-#### Genre based - Popular
 
 - Train a genre based recommender system by popularity using R package [recommenderlab]
 
@@ -466,6 +465,7 @@ as(Rmat, 'matrix')[1:3, 1:10]
 
 ```{r, eval=TRUE}
 # This may take a long time
+start.time = Sys.time()
 POPULAR_recom = predict(rec_POPULAR, 
                 Rmat, type = 'ratings')  
 POPULAR_rec_list = as(POPULAR_recom, 'list')  # each element are ratings of that user
@@ -473,6 +473,7 @@ POPULAR_rec_list = as(POPULAR_recom, 'list')  # each element are ratings of that
 POPULAR_test.pred = test
 POPULAR_test.pred$rating = NA
 
+POPULAR_time = Sys.time() - start.time
 ```
 
 ```{r}
@@ -491,11 +492,11 @@ for (u in 1:nrow(test)){
 
 # Calculate RMSE
 POPULAR_RMSE = sqrt(mean((test$Rating - POPULAR_test.pred$rating)^2)) 
-POPULAR_RMSE
+
 ```
 
 
-#### Genre based - Highly rated
+### System Ib - Genre based (Highly rated)
 
 
 - Train a genre based recommender system by popularity using R package [recommenderlab]
@@ -531,6 +532,7 @@ as(Rmat, 'matrix')[1:3, 1:10]
 
 ```{r, eval=TRUE}
 # This may take a long time
+start.time = Sys.time()
 RERECOMMEND_recom = predict(rec_RERECOMMEND, 
                 Rmat, type = 'ratings')  
 RERECOMMEND_rec_list = as(RERECOMMEND_recom, 'list')  # each element are ratings of that user
@@ -538,6 +540,7 @@ RERECOMMEND_rec_list = as(RERECOMMEND_recom, 'list')  # each element are ratings
 RERECOMMEND_test.pred = test
 RERECOMMEND_test.pred$rating = NA
 
+RERECOMMEND_time = Sys.time() - start.time
 ```
 
 ```{r}
@@ -563,9 +566,8 @@ RERECOMMEND_RMSE
 
 
 
-### System II
+### System IIa - User-Based Collaborative Filtering
 
-#### User-Based Collaborative Filtering
 
 - Train a user-based collaborative filtering recommender system using R package [recommenderlab]
 
@@ -599,6 +601,7 @@ as(Rmat, 'matrix')[1:3, 1:10]
 
 ```{r, eval=TRUE}
 # This may take a long time
+start.time = Sys.time()
 UBCF_recom = predict(rec_UBCF, 
                 Rmat, type = 'ratings')  
 UBCF_rec_list = as(UBCF_recom, 'list')  # each element are ratings of that user
@@ -606,6 +609,7 @@ UBCF_rec_list = as(UBCF_recom, 'list')  # each element are ratings of that user
 UBCF_test.pred = test
 UBCF_test.pred$rating = NA
 
+UBCF_time = Sys.time() - start.time
 ```
 
 ```{r}
@@ -633,7 +637,8 @@ UBCF_RMSE
 # recommenderRegistry$get_entry_names()
 ```
 
-#### Item-based Collaborative Filtering
+
+### System IIb - Item-based Collaborative Filtering
 
 - Train Item-based collaborative filtering recommender system using R package recommenderLab
 
@@ -691,6 +696,7 @@ recc_matrix[, 1:4]
 
 ```{r, eval=TRUE}
 # This may take a long time
+start.time = Sys.time()
 IBCF_recom = predict(rec_IBCF, 
                 Rmat, type = 'ratings')  
 IBCF_rec_list = as(IBCF_recom, 'list')  # each element are ratings of that user
@@ -698,6 +704,7 @@ IBCF_rec_list = as(IBCF_recom, 'list')  # each element are ratings of that user
 IBCF_test.pred = test
 IBCF_test.pred$rating = NA
 
+IBCF_time = Sys.time() - start.time
 ```
 
 ```{r}
@@ -723,9 +730,19 @@ IBCF_RMSE
 
 RMSE Comparison of different System and scheme
 
-```{r}
+```{r echo=FALSE}
 results = data.frame("System I: Popular" = POPULAR_RMSE, "System I: Highly Rated" = RERECOMMEND_RMSE, "System II: UBCF"= UBCF_RMSE, "System II: IBCF"= IBCF_RMSE)
 
 kable(results)
+```
+
+Prediction running time Comparison of different System and scheme
+
+```{r echo=FALSE}
+
+results2 = data.frame("System I: Popular" = POPULAR_time, "System I: Highly Rated" = RERECOMMEND_time, "System II: UBCF"= UBCF_time, "System II: IBCF"= IBCF_time)
+
+kable(results2)
+
 ```
 
