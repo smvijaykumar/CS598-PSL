@@ -11,8 +11,23 @@ genre_list <- c("Select","Action", "Adventure", "Animation", "Childrens",
                 "Film.Noir", "Horror", "Musical", "Mystery","Romance",
                 "Sci.Fi", "Thriller", "War", "Western")
 
+
+
 #shiny code to display web page
 shinyUI(fluidPage(
+  tags$head(
+    tags$style(
+      HTML(".shiny-notification {
+              height: 100px;
+              width: 600px;
+              position:fixed;
+              top: calc(50% - 50px);;
+              left: calc(50% - 200px);;
+            }
+           "
+      )
+    )
+  ),
   tabsetPanel( id = "tabs",
      tabPanel("System-1",wellPanel("Movie Recommendation Engine - System 1"),
               tags$style("body {background: url(http://www.wallpaperup.com/wallpaper/download/858715) no-repeat center center fixed; 

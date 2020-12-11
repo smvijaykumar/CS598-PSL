@@ -134,7 +134,7 @@ shinyServer(function(input, output) {
                                    selected = sort(subset(movies, Western == 1)$Title)[1])
            
         )),column(4,
-              numericInput("select_rating","Provide Rating(1 to 5)",value = "")))
+              selectInput("select_rating","Provide Rating(1 to 5)",c(1,2,3,4,5))))
   })
   
   output$ui2 <- renderUI({
@@ -200,7 +200,7 @@ shinyServer(function(input, output) {
                                    choices = sort(subset(movies, Western == 1)$Title),
                                    selected = sort(subset(movies, Western == 1)$Title)[1])
         )), column(4,
-                  numericInput("select2_rating","Provide Rating(1 to 5)",value = "")))
+                  selectInput("select2_rating","Provide Rating(1 to 5)",c(1,2,3,4,5))))
   })
   
   output$ui3 <- renderUI({
@@ -267,7 +267,7 @@ shinyServer(function(input, output) {
                                    selected = sort(subset(movies, Western == 1)$Title)[1])
            
     )), column(4,
-    numericInput("select3_rating","Provide Rating(1 to 5)",value = "")))
+    selectInput("select3_rating","Provide Rating(1 to 5)",c(1,2,3,4,5))))
   })
   output$ui31 = renderUI({
     if (is.null(input$select) && is.null(input$select2) && is.null(input$select3))
@@ -290,18 +290,30 @@ shinyServer(function(input, output) {
   final_output <- reactiveValues()
   
   observeEvent(input$recBtn, {
-    final_output$rec_ucbf <- movie_recommendation(input$select, input$select2, 
-                                                  input$select3,
-                                                  input$select_rating,
-                                                  input$select2_rating,
-                                                  input$select3_rating)
+
+    withProgress(
+      message = 'Getting Recommendation',
+                 detail = 'This may take a while...', value = 0, {
+                   final_output$rec_ucbf <- movie_recommendation(input$select, input$select2, 
+                                                                 input$select3,
+                                                                 input$select_rating,
+                                                                 input$select2_rating,
+                                                                 input$select3_rating)
+                   for (i in 1:10) {
+                     incProgress(1/10)
+                     Sys.sleep(1)
+                   }
+                 })
     })
+  
   #to display output data
   output$table <- renderTable({
     if (is.null(input$select) && is.null(input$select2) && is.null(input$select3))
       return()
-    if(!is.null(final_output$rec_ucbf))
+    
+    if(!is.null(final_output$rec_ucbf)) {
       return(final_output$rec_ucbf)
+    } 
   })
   
   #to display output data
