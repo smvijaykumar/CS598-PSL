@@ -78,7 +78,7 @@ ratings = read.csv(paste0(myurl, 'ratings.dat?raw=true'),
 colnames(ratings) = c('UserID', 'MovieID', 'Rating', 'Timestamp')
 
 # TO DO: comment out the following line before submit. It is to limit the number of ratings item to speed up testing
-ratings = ratings[1:100000,]
+#ratings = ratings[1:100000,]
 ```
 
 ```{r}
