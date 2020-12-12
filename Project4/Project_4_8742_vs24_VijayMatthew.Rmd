@@ -469,6 +469,8 @@ as(Rmat, 'matrix')[1:3, 1:10]
 
 - Evaluation with RMSE
 
+We replace any NA predicted rating with weighted average of original user rating distribution of 3.61.
+
 ```{r, eval=TRUE}
 # This may take a long time
 #start.time = Sys.time()
@@ -490,8 +492,8 @@ for (u in 1:nrow(test)){
     # Read userid and movieid from columns 2 and 3 of test data
     movieid = paste("m",as.character(test$MovieID[u]), sep ="" )
 
-    # handle missing values; 2.5 might not be the ideal choice
-    POPULAR_test.pred$rating[u] = ifelse(movieid %in% names(AVG_POPULAR_recom), AVG_POPULAR_recom[[movieid]], 2.5) 
+    # handle missing values; replace with weighted average of original user rating distribution of 3.61
+    POPULAR_test.pred$rating[u] = ifelse(movieid %in% names(AVG_POPULAR_recom), AVG_POPULAR_recom[[movieid]], 3.61) 
 }
 
 # Calculate RMSE
@@ -540,6 +542,8 @@ as(Rmat, 'matrix')[1:3, 1:10]
 
 - Evaluation with RMSE
 
+We replace any NA predicted rating with weighted average of original user rating distribution of 3.61.
+
 ```{r, eval=TRUE}
 # This may take a long time
 start.time = Sys.time()
@@ -563,8 +567,8 @@ for (u in 1:nrow(test)){
     movieid = as.integer(test$MovieID[u])
     
     rating = HYBRID_rec_list[[userid]][movieid]
-    # handle missing values; 2.5 might not be the ideal choice
-    HYBRID_test.pred$rating[u] = ifelse(is.na(rating), 2.5, rating)
+    # handle missing values; replace with weighted average of original user rating distribution of 3.61
+    HYBRID_test.pred$rating[u] = ifelse(is.na(rating), 3.61, rating)
 }
 
 # Calculate RMSE
@@ -617,6 +621,8 @@ as(Rmat, 'matrix')[1:3, 1:10]
 
 - Evaluation with RMSE
 
+We replace any NA predicted rating with weighted average of original user rating distribution of 3.61.
+
 ```{r, eval=TRUE}
 # This may take a long time
 start.time = Sys.time()
@@ -640,8 +646,8 @@ for (u in 1:nrow(test)){
     movieid = as.integer(test$MovieID[u])
     
     rating = UBCF_rec_list[[userid]][movieid]
-    # handle missing values; 2.5 might not be the ideal choice
-    UBCF_test.pred$rating[u] = ifelse(is.na(rating), 2.5, rating)
+    # handle missing values; replace with weighted average of original user rating distribution of 3.61
+    UBCF_test.pred$rating[u] = ifelse(is.na(rating), 3.61, rating)
 }
 
 # Calculate RMSE
@@ -724,6 +730,8 @@ recc_matrix[, 1:4]
 
 - Evaluation with RMSE
 
+We replace any NA predicted rating with weighted average of original user rating distribution of 3.61.
+
 ```{r, eval=TRUE}
 # This may take a long time
 start.time = Sys.time()
@@ -747,8 +755,8 @@ for (u in 1:nrow(test)){
     movieid = as.integer(test$MovieID[u])
     
     rating = IBCF_rec_list[[userid]][movieid]
-    # handle missing values; 2.5 might not be the ideal choice
-    IBCF_test.pred$rating[u] = ifelse(is.na(rating), 2.5, rating)
+    # handle missing values; replace with weighted average of original user rating distribution of 3.61
+    IBCF_test.pred$rating[u] = ifelse(is.na(rating), 3.61, rating)
 }
 
 # Calculate RMSE
