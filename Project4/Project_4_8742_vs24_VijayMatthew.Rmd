@@ -429,10 +429,10 @@ dim(Rmat)
 
 
 
-### System Ia - Genre based (Popular)
+### System Ia - Genre based (Average Popular Rating)
 
 
-- Train a genre based recommender system by popularity using R package [recommenderlab]
+- Train a genre based recommender system by popularity using R package [recommenderlab]. Popularity is defined as higher number of reviews rather then highly rated reviews.
 
 ```{r}
 rec_POPULAR = Recommender(Rmat, method = 'POPULAR',
@@ -442,20 +442,26 @@ rec_POPULAR = Recommender(Rmat, method = 'POPULAR',
 rec_POPULAR@model
 ```
 
-- Make prediction on the test data
+- Make prediction on the test data. We are get the predicted ratings from the model first. We average the predicted ratings for every single movies. We ignore any NA return from the model. We use this average popular ratings to assign to recommend to every single users.
 
-First let's predict all un-rated movies for the first three users in the training data. No information for users not in the training data; the coldstart issue. 
 
 ```{r}
-# predict ratings for the first three users
+# predict ratings for all users, and compare it to first three users
+start.time = Sys.time()
 POPULAR_recom = predict(rec_POPULAR, 
-                Rmat[1:3], type = 'ratings')
+                Rmat, type = 'ratingMatrix')
+recom_mat <- as(Rmat, "matrix")
+AVG_POPULAR_recom = colMeans(recom_mat,na.rm=TRUE)
+POPULAR_time = Sys.time() - start.time
+
 ```
 
-We display the original and predicted ratings of the first 10 movies for the three users. Note that the final prediction could still have missing values. 
+We display the predicted average popular ratings for every users, and original rating of the first 10 movies for the three users.
+
 
 ```{r}
-as(POPULAR_recom, 'matrix')[, 1:10]
+
+AVG_POPULAR_recom[1:10]
 as(Rmat, 'matrix')[1:3, 1:10]
 ```
 
@@ -465,15 +471,15 @@ as(Rmat, 'matrix')[1:3, 1:10]
 
 ```{r, eval=TRUE}
 # This may take a long time
-start.time = Sys.time()
-POPULAR_recom = predict(rec_POPULAR, 
-                Rmat, type = 'ratings')  
-POPULAR_rec_list = as(POPULAR_recom, 'list')  # each element are ratings of that user
+#start.time = Sys.time()
+#POPULAR_recom = predict(rec_POPULAR, 
+#                Rmat, type = 'ratings')  
+#POPULAR_rec_list = as(POPULAR_recom, 'list')  # each element are ratings of that user
 
 POPULAR_test.pred = test
 POPULAR_test.pred$rating = NA
 
-POPULAR_time = Sys.time() - start.time
+#POPULAR_time = Sys.time() - start.time
 ```
 
 ```{r}
@@ -482,12 +488,10 @@ POPULAR_time = Sys.time() - start.time
 for (u in 1:nrow(test)){
 
     # Read userid and movieid from columns 2 and 3 of test data
-    userid = as.integer(test$UserID[u])
-    movieid = as.integer(test$MovieID[u])
-    
-    rating = POPULAR_rec_list[[userid]][movieid]
+    movieid = paste("m",as.character(test$MovieID[u]), sep ="" )
+
     # handle missing values; 2.5 might not be the ideal choice
-    POPULAR_test.pred$rating[u] = ifelse(is.na(rating), 2.5, rating)
+    POPULAR_test.pred$rating[u] = ifelse(movieid %in% names(AVG_POPULAR_recom), AVG_POPULAR_recom[[movieid]], 2.5) 
 }
 
 # Calculate RMSE
@@ -496,17 +500,23 @@ POPULAR_RMSE = sqrt(mean((test$Rating - POPULAR_test.pred$rating)^2))
 ```
 
 
-### System Ib - Genre based (Highly rated)
+### System Ib - Genre based (Hybrid)
 
 
-- Train a genre based recommender system by popularity using R package [recommenderlab]
+- Train a genre based recommender system with hybrid model using R package [recommenderlab]. The model mix with POPULAR movie (most reviewed), RANDOM for serendipity and RERECOMMEND for the user his/her own rating with weighting of 0.6, 0.2 and 0.2 respectively.
 
 ```{r}
-rec_RERECOMMEND = Recommender(Rmat, method = 'RERECOMMEND',
-                          parameter = list(randomize = 1, minRating = 1))
+# mix popular movies with a random recommendations for diversity and rerecommend some movies the user liked.
+rec_HYBRID = HybridRecommender(
+  Recommender(Rmat, method = "POPULAR"),
+  Recommender(Rmat, method = "RANDOM"),
+  Recommender(Rmat, method = "RERECOMMEND"),
+  weights = c(.6, .2, .2)
+)
+
 
 #Summary of model parameters
-rec_RERECOMMEND@model
+rec_HYBRID@model
 ```
 
 - Make prediction on the test data
@@ -515,14 +525,14 @@ First let's predict all un-rated movies for the first three users in the trainin
 
 ```{r}
 # predict ratings for the first three users
-RERECOMMEND_recom = predict(rec_RERECOMMEND, 
+HYBRID_recom = predict(rec_HYBRID, 
                 Rmat[1:3], type = 'ratings')
 ```
 
 We display the original and predicted ratings of the first 10 movies for the three users. Note that the final prediction could still have missing values. 
 
 ```{r}
-as(RERECOMMEND_recom, 'matrix')[, 1:10]
+as(HYBRID_recom, 'matrix')[, 1:10]
 as(Rmat, 'matrix')[1:3, 1:10]
 ```
 
@@ -533,14 +543,14 @@ as(Rmat, 'matrix')[1:3, 1:10]
 ```{r, eval=TRUE}
 # This may take a long time
 start.time = Sys.time()
-RERECOMMEND_recom = predict(rec_RERECOMMEND, 
+HYBRID_recom = predict(rec_HYBRID, 
                 Rmat, type = 'ratings')  
-RERECOMMEND_rec_list = as(RERECOMMEND_recom, 'list')  # each element are ratings of that user
+HYBRID_rec_list = as(HYBRID_recom, 'list')  # each element are ratings of that user
 
-RERECOMMEND_test.pred = test
-RERECOMMEND_test.pred$rating = NA
+HYBRID_test.pred = test
+HYBRID_test.pred$rating = NA
 
-RERECOMMEND_time = Sys.time() - start.time
+HYBRID_time = Sys.time() - start.time
 ```
 
 ```{r}
@@ -552,14 +562,14 @@ for (u in 1:nrow(test)){
     userid = as.integer(test$UserID[u])
     movieid = as.integer(test$MovieID[u])
     
-    rating = RERECOMMEND_rec_list[[userid]][movieid]
+    rating = HYBRID_rec_list[[userid]][movieid]
     # handle missing values; 2.5 might not be the ideal choice
-    RERECOMMEND_test.pred$rating[u] = ifelse(is.na(rating), 2.5, rating)
+    HYBRID_test.pred$rating[u] = ifelse(is.na(rating), 2.5, rating)
 }
 
 # Calculate RMSE
-RERECOMMEND_RMSE = sqrt(mean((test$Rating - RERECOMMEND_test.pred$rating)^2)) 
-RERECOMMEND_RMSE
+HYBRID_RMSE = sqrt(mean((test$Rating - HYBRID_test.pred$rating)^2)) 
+HYBRID_RMSE
 ```
 
 
@@ -569,7 +579,15 @@ RERECOMMEND_RMSE
 ### System IIa - User-Based Collaborative Filtering
 
 
-- Train a user-based collaborative filtering recommender system using R package [recommenderlab]
+Train a user-based collaborative filtering (UBCF) recommender system using R package [recommenderlab]. 
+
+We use the following parameters for the UBCF model:
+
+  - Z-score normalization to the ratings matrix
+  
+  - pick 5 nearest neighbor
+  
+  - similarity measure is cosine similarity
 
 ```{r}
 rec_UBCF = Recommender(Rmat, method = 'UBCF',
@@ -640,15 +658,27 @@ UBCF_RMSE
 
 ### System IIb - Item-based Collaborative Filtering
 
-- Train Item-based collaborative filtering recommender system using R package recommenderLab
+Train Item-based collaborative filtering (IBCF) recommender system using R package recommenderLab
+
+We use the following parameters for the IBCF model:
+
+  - Z-score normalization to the ratings matrix
+  
+  - similarity measure is cosine similarity
+  
+  - similarity matrix is not normalized
 
 ```{r message=FALSE, warning=FALSE}
 rec_IBCF = Recommender(Rmat, method = 'IBCF',
                   parameter = list(normalize = 'Z-score', 
-                                   method = 'Cosine', 
-                                   nn = 25))
+                                   method = 'Cosine'))
+
+
 #Summary of model parameters
-rec_IBCF@model
+rec_IBCF@model$method
+rec_IBCF@model$normalize
+rec_IBCF@model$normalize_sim_matrix
+
 ```
 
 ```{r}
@@ -728,10 +758,13 @@ IBCF_RMSE
 
 ## Summary
 
+From the following table of prediction speed and lowest RMSE, System I Average Popular model stands out.
+
+
 RMSE Comparison of different System and scheme
 
 ```{r echo=FALSE}
-results = data.frame("System I: Popular" = POPULAR_RMSE, "System I: Highly Rated" = RERECOMMEND_RMSE, "System II: UBCF"= UBCF_RMSE, "System II: IBCF"= IBCF_RMSE)
+results = data.frame("System I: Avg Popular" = POPULAR_RMSE, "System I: Hybrid" = HYBRID_RMSE, "System II: UBCF"= UBCF_RMSE, "System II: IBCF"= IBCF_RMSE)
 
 kable(results)
 ```
@@ -740,7 +773,7 @@ Prediction running time Comparison of different System and scheme
 
 ```{r echo=FALSE}
 
-results2 = data.frame("System I: Popular" = POPULAR_time, "System I: Highly Rated" = RERECOMMEND_time, "System II: UBCF"= UBCF_time, "System II: IBCF"= IBCF_time)
+results2 = data.frame("System I: Avg Popular" = POPULAR_time, "System I: Hybrid" = HYBRID_time, "System II: UBCF"= UBCF_time, "System II: IBCF"= IBCF_time)
 
 kable(results2)
 
