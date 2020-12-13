@@ -94,13 +94,17 @@ install.packages(c("dplyr","rmarkdown","httpuv","shiny","shinythemes","shinycssl
 This is simple shinyapp for movie recommendation developed as part of Project 4 for course CS598-PSL. 
 
 [ui.R](ui.R)
+
 [server.R](server.R)
+
 [recommendation.R](recommendation.R)
 
 <!-- Data-->
 ## Data
 [Movie Rating Dataset](ratings.dat)
+
 [Movie Movies Dataset](movies.dat)
+
 [Movie Users Dataset](users.dat)
 
 <!-- CONTACT -->
