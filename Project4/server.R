@@ -5,8 +5,11 @@ library(proxy)
 library(recommenderlab)
 library(reshape2)
 library(data.table)
+library(shinyjs)
+library(ShinyRatingInput)
 
 myurl = "https://liangfgithub.github.io/MovieData/"
+numGenres = 3
 
 loadRatingData = function() {
   # use colClasses = 'NULL' to skip columns
@@ -69,248 +72,42 @@ formatInput <- function(v,a,d){
 
 shinyServer(function(input, output) {
 
-  output$ui <- renderUI({
-    if (input$input_genre == 'Select')
-      return()
-
-    #switch-case to display movies
-    fluidRow(
-      column(8,
-        switch(input$input_genre,
-           "Select" = tags$p("Select Genre #1 first to display movie list."),
-           "Action" = selectInput("select", "Movie of Genre #1",
-                                  choices = sort(subset(movies, Action == 1)$Title),
-                                  selected = sort(subset(movies, Action == 1)$Title)[1]),
-           "Adventure" = selectInput("select", "Movie of Genre #1",
-                                     choices = sort(subset(movies, Adventure == 1)$Title),
-                                     selected = sort(subset(movies, Adventure == 1)$Title)[1]),
-           "Animation" =  selectInput("select", "Movie of Genre #1",
-                                      choices = sort(subset(movies, Animation == 1)$Title),
-                                      selected = sort(subset(movies, Animation == 1)$Title)[1]),
-           "Childrens" =  selectInput("select", "Movie of Genre #1",
-                                     choices = sort(subset(movies, Childrens == 1)$Title),
-                                     selected = sort(subset(movies, Childrens == 1)$Title)[1]),
-           "Comedy" =  selectInput("select", "Movie of Genre #1",
-                                   choices = sort(subset(movies, Comedy == 1)$Title),
-                                   selected = sort(subset(movies, Comedy == 1)$Title)[1]),
-           "Crime" =  selectInput("select", "Movie of Genre #1",
-                                  choices = sort(subset(movies, Crime == 1)$Title),
-                                  selected = sort(subset(movies, Crime == 1)$Title)[1]),
-           "Documentary" =  selectInput("select", "Movie of Genre #1",
-                                        choices = sort(subset(movies, Documentary == 1)$Title),
-                                        selected = sort(subset(movies, Documentary == 1)$Title)[1]),
-           "Drama" =  selectInput("select", "Movie of Genre #1",
-                                  choices = sort(subset(movies, Drama == 1)$Title),
-                                  selected = sort(subset(movies, Drama == 1)$Title)[1]),
-           "Fantasy" =  selectInput("select", "Movie of Genre #1",
-                                    choices = sort(subset(movies, Fantasy == 1)$Title),
-                                    selected = sort(subset(movies, Fantasy == 1)$Title)[1]),
-           "Film.Noir" =  selectInput("select", "Movie of Genre #1",
-                                      choices = sort(subset(movies, Film.Noir == 1)$Title),
-                                      selected = sort(subset(movies, Film.Noir == 1)$Title)[1]),
-           "Horror" =  selectInput("select", "Movie of Genre #1",
-                                   choices = sort(subset(movies, Horror == 1)$Title),
-                                   selected = sort(subset(movies, Horror == 1)$Title)[1]),
-           "Musical" =  selectInput("select", "Movie of Genre #1",
-                                    choices = sort(subset(movies, Musical == 1)$Title),
-                                    selected = sort(subset(movies, Musical == 1)$Title)[1]),
-           "Mystery" =  selectInput("select", "Movie of Genre #1",
-                                    choices = sort(subset(movies, Mystery == 1)$Title),
-                                    selected = sort(subset(movies, Mystery == 1)$Title)[1]),
-           "Romance" =  selectInput("select", "Movie of Genre #1",
-                                    choices = sort(subset(movies, Romance == 1)$Title),
-                                    selected = sort(subset(movies, Romance == 1)$Title)[1]),
-           "Sci.Fi" =  selectInput("select", "Movie of Genre #1",
-                                   choices = sort(subset(movies, Sci.Fi == 1)$Title),
-                                   selected = sort(subset(movies, Sci.Fi == 1)$Title)[1]),
-           "Thriller" =  selectInput("select", "Movie of Genre #1",
-                                     choices = sort(subset(movies, Thriller == 1)$Title),
-                                     selected = sort(subset(movies, Thriller == 1)$Title)[1]),
-           "War" =  selectInput("select", "Movie of Genre #1",
-                                choices = sort(subset(movies, War == 1)$Title),
-                                selected = sort(subset(movies, War == 1)$Title)[1]),
-           "Western" = selectInput("select", "Movie of Genre #1",
-                                   choices = sort(subset(movies, Western == 1)$Title),
-                                   selected = sort(subset(movies, Western == 1)$Title)[1])
-           
-        )),column(4,
-              selectInput("select_rating","Provide Rating(1 to 5)",c(1,2,3,4,5))))
-  })
-  
-  output$ui2 <- renderUI({
-    if (input$input_genre2 == 'Select')
-      return()
-
-    fluidRow(
-      column(8,
-        switch(input$input_genre2,
-           "Select" = tags$p("Select Genre #2 first to display movie list."),
-           "Action" = selectInput("select2", "Movie of Genre #2",
-                                  choices = sort(subset(movies, Action == 1)$Title),
-                                  selected = sort(subset(movies, Action == 1)$Title)[1]),
-           "Adventure" = selectInput("select2", "Movie of Genre #2",
-                                     choices = sort(subset(movies, Adventure == 1)$Title),
-                                     selected = sort(subset(movies, Adventure == 1)$Title)[1]),
-           "Animation" =  selectInput("select2", "Movie of Genre #2",
-                                      choices = sort(subset(movies, Animation == 1)$Title),
-                                      selected = sort(subset(movies, Animation == 1)$Title)[1]),
-           "Childrens" =  selectInput("select2", "Movie of Genre #2",
-                                     choices = sort(subset(movies, Childrens == 1)$Title),
-                                     selected = sort(subset(movies, Childrens == 1)$Title)[1]),
-           "Comedy" =  selectInput("select2", "Movie of Genre #2",
-                                   choices = sort(subset(movies, Comedy == 1)$Title),
-                                   selected = sort(subset(movies, Comedy == 1)$Title)[1]),
-           "Crime" =  selectInput("select2", "Movie of Genre #2",
-                                  choices = sort(subset(movies, Crime == 1)$Title),
-                                  selected = sort(subset(movies, Crime == 1)$Title)[1]),
-           "Documentary" =  selectInput("select2", "Movie of Genre #2",
-                                        choices = sort(subset(movies, Documentary == 1)$Title),
-                                        selected = sort(subset(movies, Documentary == 1)$Title)[1]),
-           "Drama" =  selectInput("select2", "Movie of Genre #2",
-                                  choices = sort(subset(movies, Drama == 1)$Title),
-                                  selected = sort(subset(movies, Drama == 1)$Title)[1]),
-           "Fantasy" =  selectInput("select2", "Movie of Genre #2",
-                                    choices = sort(subset(movies, Fantasy == 1)$Title),
-                                    selected = sort(subset(movies, Fantasy == 1)$Title)[1]),
-           "Film.Noir" =  selectInput("select2", "Movie of Genre #2",
-                                      choices = sort(subset(movies, Film.Noir == 1)$Title),
-                                      selected = sort(subset(movies, Film.Noir == 1)$Title)[1]),
-           "Horror" =  selectInput("select2", "Movie of Genre #2",
-                                   choices = sort(subset(movies, Horror == 1)$Title),
-                                   selected = sort(subset(movies, Horror == 1)$Title)[1]),
-           "Musical" =  selectInput("select2", "Movie of Genre #2",
-                                    choices = sort(subset(movies, Musical == 1)$Title),
-                                    selected = sort(subset(movies, Musical == 1)$Title)[1]),
-           "Mystery" =  selectInput("select2", "Movie of Genre #2",
-                                    choices = sort(subset(movies, Mystery == 1)$Title),
-                                    selected = sort(subset(movies, Mystery == 1)$Title)[1]),
-           "Romance" =  selectInput("select2", "Movie of Genre #2",
-                                    choices = sort(subset(movies, Romance == 1)$Title),
-                                    selected = sort(subset(movies, Romance == 1)$Title)[1]),
-           "Sci.Fi" =  selectInput("select2", "Movie of Genre #2",
-                                   choices = sort(subset(movies, Sci.Fi == 1)$Title),
-                                   selected = sort(subset(movies, Sci.Fi == 1)$Title)[1]),
-           "Thriller" =  selectInput("select2", "Movie of Genre #2",
-                                     choices = sort(subset(movies, Thriller == 1)$Title),
-                                     selected = sort(subset(movies, Thriller == 1)$Title)[1]),
-           "War" =  selectInput("select2", "Movie of Genre #2",
-                                choices = sort(subset(movies, War == 1)$Title),
-                                selected = sort(subset(movies, War == 1)$Title)[1]),
-           "Western" = selectInput("select2", "Movie of Genre #2",
-                                   choices = sort(subset(movies, Western == 1)$Title),
-                                   selected = sort(subset(movies, Western == 1)$Title)[1])
-        )), column(4,
-                  selectInput("select2_rating","Provide Rating(1 to 5)",c(1,2,3,4,5))))
-  })
-  
-  output$ui3 <- renderUI({
-    if (input$input_genre3 == 'Select')
-      return()
-    fluidRow(
-      column(8,
-        switch(input$input_genre3,
-           
-           "Select" = tags$p("Select Genre #3 first to display movie list."),
-           "Action" = selectInput("select3", "Movie of Genre #3",
-                                  choices = sort(subset(movies, Action == 1)$Title),
-                                  selected = sort(subset(movies, Action == 1)$Title)[1]),
-           "Adventure" = selectInput("select3", "Movie of Genre #3",
-                                     choices = sort(subset(movies, Adventure == 1)$Title),
-                                     selected = sort(subset(movies, Adventure == 1)$Title)[1]),
-           "Animation" =  selectInput("select3", "Movie of Genre #3",
-                                      choices = sort(subset(movies, Animation == 1)$Title),
-                                      selected = sort(subset(movies, Animation == 1)$Title)[1]),
-           "Childrens" =  selectInput("select3", "Movie of Genre #3",
-                                     choices = sort(subset(movies, Childrens == 1)$Title),
-                                     selected = sort(subset(movies, Childrens == 1)$Title)[1]),
-           "Comedy" =  selectInput("select3", "Movie of Genre #3",
-                                   choices = sort(subset(movies, Comedy == 1)$Title),
-                                   selected = sort(subset(movies, Comedy == 1)$Title)[1]),
-           "Crime" =  selectInput("select3", "Movie of Genre #3",
-                                  choices = sort(subset(movies, Crime == 1)$Title),
-                                  selected = sort(subset(movies, Crime == 1)$Title)[1]),
-           "Documentary" =  selectInput("select3", "Movie of Genre #3",
-                                        choices = sort(subset(movies, Documentary == 1)$Title),
-                                        selected = sort(subset(movies, Documentary == 1)$Title)[1]),
-           "Drama" =  selectInput("select3", "Movie of Genre #3",
-                                  choices = sort(subset(movies, Drama == 1)$Title),
-                                  selected = sort(subset(movies, Drama == 1)$Title)[1]),
-           "Fantasy" =  selectInput("select3", "Movie of Genre #3",
-                                    choices = sort(subset(movies, Fantasy == 1)$Title),
-                                    selected = sort(subset(movies, Fantasy == 1)$Title)[1]),
-           "Film.Noir" =  selectInput("select3", "Movie of Genre #3",
-                                      choices = sort(subset(movies, Film.Noir == 1)$Title),
-                                      selected = sort(subset(movies, Film.Noir == 1)$Title)[1]),
-           "Horror" =  selectInput("select3", "Movie of Genre #3",
-                                   choices = sort(subset(movies, Horror == 1)$Title),
-                                   selected = sort(subset(movies, Horror == 1)$Title)[1]),
-           "Musical" =  selectInput("select3", "Movie of Genre #3",
-                                    choices = sort(subset(movies, Musical == 1)$Title),
-                                    selected = sort(subset(movies, Musical == 1)$Title)[1]),
-           "Mystery" =  selectInput("select3", "Movie of Genre #3",
-                                    choices = sort(subset(movies, Mystery == 1)$Title),
-                                    selected = sort(subset(movies, Mystery == 1)$Title)[1]),
-           "Romance" =  selectInput("select3", "Movie of Genre #3",
-                                    choices = sort(subset(movies, Romance == 1)$Title),
-                                    selected = sort(subset(movies, Romance == 1)$Title)[1]),
-           "Sci.Fi" =  selectInput("select3", "Movie of Genre #3",
-                                   choices = sort(subset(movies, Sci.Fi == 1)$Title),
-                                   selected = sort(subset(movies, Sci.Fi == 1)$Title)[1]),
-           "Thriller" =  selectInput("select3", "Movie of Genre #3",
-                                     choices = sort(subset(movies, Thriller == 1)$Title),
-                                     selected = sort(subset(movies, Thriller == 1)$Title)[1]),
-           "War" =  selectInput("select3", "Movie of Genre #3",
-                                choices = sort(subset(movies, War == 1)$Title),
-                                selected = sort(subset(movies, War == 1)$Title)[1]),
-           "Western" = selectInput("select3", "Movie of Genre #3",
-                                   choices = sort(subset(movies, Western == 1)$Title),
-                                   selected = sort(subset(movies, Western == 1)$Title)[1])
-           
-    )), column(4,
-    selectInput("select3_rating","Provide Rating(1 to 5)",c(1,2,3,4,5))))
-  })
-  output$ui31 = renderUI({
-    if (is.null(input$select) && is.null(input$select2) && is.null(input$select3))
-      return()
-    fluidRow(column(3,actionButton("recBtn","Rate and Get Recommendation")))
-  })
-  
-  output$ui4 <- renderUI({
-    
-    wellPanel(
-      selectInput("select4", "Genre #1",
-                  genre_list),
-      selectInput("select5", "Genre #2",
-                  genre_list),
-      selectInput("select6", "Genre #3",
-                  genre_list)
-    )
-     
-  })
   final_output <- reactiveValues()
   
-  observeEvent(input$recBtn, {
-
-    withProgress(
-      message = 'Getting Recommendation',
-                 detail = 'This may take a while...', value = 0, {
-                   final_output$rec_ucbf <- movie_recommendation(input$select, input$select2, 
-                                                                 input$select3,
-                                                                 input$select_rating,
-                                                                 input$select2_rating,
-                                                                 input$select3_rating)
-                   for (i in 1:10) {
-                     incProgress(1/10)
-                     Sys.sleep(1)
-                   }
-                 })
+  observeEvent(
+    input$recBtn, {
+   
+       ratedMovieIds = c()
+       ratedMovieIdsRatings = c()
+       for(i in randomMovieIds$ids) {
+         if(input[[paste0("movieId",i)]] != "") {
+           ratedMovieIds = c(ratedMovieIds,paste0("movieId",i))
+           ratedMovieIdsRatings = c(ratedMovieIdsRatings,input[[paste0("movieId",i)]])
+         }
+         
+       }
+       final_output$rec_ucbf <- movie_recommendation(ratedMovieIds,ratedMovieIdsRatings)
     })
+  
+  observeEvent(input$addNew, { 
+    numGenres = length(input_genres_r$InputGenres) + 1
+
+    input_genres_r$InputGenres[[numGenres]] = 
+      selectInput(paste0("input_genre",numGenres), 
+                  paste0("Genre #",numGenres),
+                  genre_list)
+
+  })
+  
+  observeEvent(input$resetbtn, {
+    #session$sendInputMessage("movieRating", list(value = NULL))
+    js$reset_1(0)
+    
+  })
   
   #to display output data
   output$table <- renderTable({
-    if (is.null(input$select) && is.null(input$select2) && is.null(input$select3))
-      return()
-    
+    input$recBtn
     if(!is.null(final_output$rec_ucbf)) {
       return(final_output$rec_ucbf)
     } 
@@ -318,14 +115,62 @@ shinyServer(function(input, output) {
   
   #to display output data
   output$table2 <- renderTable({
-    if (is.null(input$select4) && is.null(input$select5) && is.null(input$select6))
-      return()
-    if(input$select4 != "Select" || input$select5 != "Select" || input$select6 != "Select")
-      movie_recommendation_popular(input$select4, input$select5, input$select6)
+    numGenres = length(input_genres_r$InputGenres)
+    if(numGenres == 0) return()
+    getRec = FALSE
+    selectedGenres = c()
+    for(i in 1:numGenres) {
+      if( !is.null(input[[paste0("input_genre",i)]]) && 
+        input[[paste0("input_genre",i)]] != "Select" ) {
+          getRec = TRUE
+          selectedGenres = c(selectedGenres,input[[paste0("input_genre",i)]])
+      }
+    }
+    if(getRec)
+      return (movie_recommendation_popular(selectedGenres))
+    return()
   })
   
-  output$dynamic_value <- renderPrint({
-    c(input$select,input$select2,input$select3)
+
+  inputGenres = list(3)
+  for(i in 1:numGenres) {
+    inputGenres[[i]] = selectInput(paste("input_genre",sep = "",i), paste("Genre #","",i),
+                                                  genre_list)
+  }
+  
+  input_genres_r  = reactiveValues( InputGenres = inputGenres)
+  
+  output$recommenderButton = renderUI({
+    wellPanel(
+      actionButton("recBtn","Rate and Get Recommendation"),
+      actionButton("resetbtn", "reset"))
   })
   
+  output$renderGenres = renderUI( {
+    wellPanel(
+      do.call(fluidRow,input_genres_r$InputGenres),
+      actionLink('addNew','Add More Genres')
+    )})
+
+    randomMovieIds = reactiveValues(ids=list())
+
+  output$renderMoviesForRatings = renderUI( {
+    
+    if(length(randomMovieIds$ids) == 0) {
+      randomMovieIds$ratingInputList = list()
+      ids = list()
+      for(i in 1:100) {
+        id = sample(1:3600,1)
+        ids[[i]] = movies_new[id,]$MovieID
+        randomMovieIds$ratingInputList[[i]] = column(12,ratingInput(paste("movieId",sep="",movies_new[id,]$MovieID), label=movies_new[id,]$Title, dataStop=5))
+      }
+      randomMovieIds$ids = ids
+    }
+
+    wellPanel(
+           do.call(fluidRow,randomMovieIds$ratingInputList)
+    )})
+  
+ 
+
 })

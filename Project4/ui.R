@@ -1,9 +1,11 @@
 #ui.R
 library(shiny)
-library(shinythemes)
 library(dplyr)
 library(shinycssloaders)
+library(shinyjs)
+library(ShinyRatingInput)
 
+jsCode <-"shinyjs.reset_1 = function(params){$('.rating-symbol-foreground').css('width', params);}"
 
 #static array for genre list
 genre_list <- c("Select","Action", "Adventure", "Animation", "Childrens", 
@@ -15,6 +17,8 @@ genre_list <- c("Select","Action", "Adventure", "Animation", "Childrens",
 
 #shiny code to display web page
 shinyUI(fluidPage(
+  useShinyjs(),
+  extendShinyjs(text = jsCode,functions = "reset_1"),
   tags$head(
     tags$style(
       HTML(".shiny-notification {
@@ -35,11 +39,12 @@ shinyUI(fluidPage(
               fluidRow(
                 
                 column(3, wellPanel(h4("Select Movie Genres You Like")),
-                       wellPanel(tableOutput("ui4"))
+                       #wellPanel(tableOutput("ui4"))
+                      uiOutput("renderGenres")
                 ),
                 
                 column(9,
-                       wellPanel(h4("You Might Like The Following Highly Rated Movies!")),
+                       wellPanel(h4("Popular Movies with higher Avg Rating for selected Genres!")),
                        wellPanel(tableOutput("table2") %>% withSpinner(color="#0dc5c1")) 
                 )
               )
@@ -49,34 +54,17 @@ shinyUI(fluidPage(
               wellPanel("Movie Recommendation Engine - System 2"),
               tags$style("body {background: url(http://www.wallpaperup.com/wallpaper/download/858715) no-repeat center center fixed; 
                          background-size: cover;   filter:grayscale(100%);}"),
-              fluidRow(
+
+             fluidRow(
                 
-                column(3, wellPanel(h4("Select Movie Genres You Like :")),
-                       wellPanel(
-                         selectInput("input_genre", "Genre #1",
-                                     genre_list),
-                         selectInput("input_genre2", "Genre #2",
-                                     genre_list),
-                         selectInput("input_genre3", "Genre #3",
-                                     genre_list)
-                         
-                       )),
+                column(7, wellPanel(h4("Rate Movies You Like and then Click Button")),
+                       uiOutput("recommenderButton"),
+                       uiOutput("renderMoviesForRatings")
+                       ),
                 
-                column(5,  wellPanel(h4("Select Movies You Like and Rate:")),
-                       wellPanel(
-                         # This outputs the dynamic UI component
-                         uiOutput("ui"),
-                         uiOutput("ui2"),
-                         uiOutput("ui3"),
-                         uiOutput("ui31") 
-                        
-                       )),
-                column(4,
+                column(5,
                        wellPanel(h4("You Might Like The Following Movies!")),
-                       wellPanel(
-                         tableOutput("table") 
-                        
-                       ))
+                       wellPanel(tableOutput("table")  %>% withSpinner(color="#0dc5c1") ))
               )
       )
     

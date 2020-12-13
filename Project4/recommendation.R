@@ -43,31 +43,30 @@ ratings = read.csv("ratings.csv", header = TRUE)
 movies_new = movies[-which((movies$MovieID %in% ratings$MovieID) == FALSE),]
 
 
-movie_recommendation <- function(input,input2,input3,rating1,rating2,rating3) {
-  row_num <- which(movies_new[,2] == input) 
-  row_num2 <- which(movies_new[,2] == input2)
-  row_num3 <- which(movies_new[,2] == input3)
-  
-  ratingmatrix <- dcast(ratings, UserID~MovieID, value.var = "Rating", na.rm=FALSE)
-  ratingmatrix <- ratingmatrix[,-1]
-  
-  userSelect <- matrix(NA,ncol(ratingmatrix))
-  userSelect[row_num] <- rating1 
-  userSelect[row_num2] <- rating2 
-  userSelect[row_num3] <- rating3 
-  userSelect <- t(userSelect)
+movie_recommendation <- function(ratedMovieIds,ratedMovieIdsRatings) {
+
+  selMovies = which(movies_new$MovieID == ratedMovieIds)
   
   
-  colnames(userSelect) <- colnames(ratingmatrix)
-  ratingmatrix_new <- rbind(userSelect,ratingmatrix)
-  ratingmatrix_new <- as.matrix(ratingmatrix_new)
+  ratingmatrix = dcast(ratings, UserID~MovieID, value.var = "Rating", na.rm=FALSE)
+  ratingmatrix = ratingmatrix[,-1]
+  
+  userSelect = matrix(NA,ncol(ratingmatrix))
+  userSelect[selMovies] = ratedMovieIdsRatings
+  userSelect = t(userSelect)
+  
+  
+  colnames(userSelect) = colnames(ratingmatrix)
+  ratingmatrix_new = rbind(userSelect,ratingmatrix)
+  ratingmatrix_new = as.matrix(ratingmatrix_new)
   
   #Convert rating matrix into a sparse matrix
   ratingmatrix_new <- as(ratingmatrix_new, "realRatingMatrix")
   
+  userId = sample(1:6000,1)
   #Create Recommender Model. "UBCF" stands for user-based collaborative filtering
   recommender_model <- Recommender(ratingmatrix_new, method = "UBCF",param=list(method="Cosine",nn=5))
-  recommender <- predict(recommender_model, ratingmatrix_new[1], n=10)
+  recommender <- predict(recommender_model, ratingmatrix_new[userId], n=10)
   recom_list <- as(recommender, "list")
   no_result <- data.frame(matrix(NA,1))
   recom_result <- data.frame(matrix(NA,10))
@@ -82,11 +81,11 @@ movie_recommendation <- function(input,input2,input3,rating1,rating2,rating3) {
       recom_result[i,1] <- as.character(subset(movies, 
                                                movies$MovieID == as.integer(recom_list[[1]][i]))$Title)
     }
-    colnames(recom_result) <- "User-Based Collaborative Filtering Recommended Titles"
+    colnames(recom_result) <- "User-Based Collaborative Filtering Recommended Movies"
     return(recom_result)
   }
 }
-movie_recommendation_popular <- function(input,input2,input3) {
+movie_recommendation_popular <- function(selectedGenres) {
   
   ratingmatrix <- dcast(ratings, UserID~MovieID, value.var = "Rating", na.rm=FALSE)
   ratingmatrix <- ratingmatrix[,-1]
@@ -110,25 +109,10 @@ movie_recommendation_popular <- function(input,input2,input3) {
   #movies_new_with_rating = movies_new_with_rating[order(-movies_new_with_rating$avg_ratings,movies_new_with_rating$Genres),]
   returnList = list()
   columnNames = c()
-  if(input != "Select") {
+  for(input in selectedGenres) {
     tmp = subset(movies_new_with_rating,eval(parse(text=paste(input,"== 1"))),select = c('MovieID','Title','avg_ratings'))
-    #print(tmp[order(-tmp$avg_ratings),][1:5,])
-    returnList = cbind(tmp[order(-tmp$avg_ratings),][1:5,]$Title)
+    returnList = cbind(returnList, tmp[order(-tmp$avg_ratings),][1:5,]$Title)
     columnNames = c(columnNames,input)
-  } 
-  
-  if(input2 != "Select") {
-    tmp = subset(movies_new_with_rating,eval(parse(text=paste(input2,"== 1"))),select = c('MovieID','Title','avg_ratings'))
-    #print(tmp[order(-tmp$avg_ratings),][1:5,])
-    returnList = cbind(returnList,tmp[order(-tmp$avg_ratings),][1:5,]$Title)
-    columnNames = c(columnNames,input2)
-  } 
-  
-  if(input3 != "Select") {
-    tmp = subset(movies_new_with_rating,eval(parse(text=paste(input3,"== 1"))),select = c('MovieID','Title','avg_ratings'))
-    #print(tmp[order(-tmp$avg_ratings),][1:5,])
-    returnList = cbind(returnList,tmp[order(-tmp$avg_ratings),][1:5,]$Title)
-    columnNames = c(columnNames,input3)
   }
   
   if (length(returnList) == 0){
