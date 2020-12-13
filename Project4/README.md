@@ -38,11 +38,22 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Movie Recommendation Engine
+System I is based on movie genres
 
-<img src="https://github.com/smvijaykumar/CS598-PSL/blob/master/Project4/system1.PNG">System I</img>
+- One scheme recommend top 5 popular movies in each user selected genres. Popularity is measured by the number of ratings a movie receives. A popular movie may not be a highly rated movie. 
 
-<img src="https://github.com/smvijaykumar/CS598-PSL/blob/master/Project4/system1.PNG">System II</img>
+- The other scheme recommend 5 random movies in each user selected genres.
+
+System II is based on collaborative filtering recommendation. 
+
+- One scheme uses user-based collaborative filtering technique to estimate missing movie ratings based on other similar users ratings. Once missing movie ratings are estimated, movies with highest ratings is recommended at the top. 
+
+- The other scheme uses item-based collaborative filtering technique to estimate missing movie ratings based on other movies similar to the onces that rated highly by the user. The most similar one is recommended to the top.
+
+System I
+<img src="https://github.com/smvijaykumar/CS598-PSL/blob/master/Project4/system1.PNG" alt="System I"/>
+System II
+<img src="https://github.com/smvijaykumar/CS598-PSL/blob/master/Project4/system1.PNG" alt="System II"/>
 
 
 ### Built With
