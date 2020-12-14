@@ -1,3 +1,4 @@
+
 <p align="center">
   <h3 align="center">Movie Recommendation Engine</h3>
 
@@ -74,6 +75,20 @@ To get a local copy up and running follow these simple steps.
 
 This is an example of how to list things you need to use the software and how to install them.
 * R (> 3.6.1)
+* library(dplyr)
+* library(ggplot2)
+* library(recommenderlab)
+* library(DT)
+* library(data.table)
+* library(reshape2)
+* library(recommenderlab)
+* library(Matrix)
+* library(tidytable)
+* library(knitr)
+* library(shiny)
+* library(shinyjs)
+* library(shinyratinginput)
+
 
 ### Installation
 
@@ -99,6 +114,19 @@ This is simple shinyapp for movie recommendation developed as part of Project 4 
 
 [recommendation.R](recommendation.R)
 
+From RStudio, Click 'Run App' button to start Shiny App 
+or
+```sh
+R -e "shiny::runApp('path to shinyapp')"
+```
+Run R Markdown:
+
+Markdown File:  **Project_4_8742_vs24_VijayMatthew.Rmd**
+
+This file contains Movies, Users and Ratings Data Exploration Analysis and the process of model building.
+
+For the purpose of running, we evaluated the model only once in this markdown file.
+We added another markdown file: **Parallel.RMD** which evaluates each model 10 times using parallel and foreach package to speed up the process.
 <!-- Data-->
 ## Data
 [Movie Rating Dataset](ratings.dat)
@@ -107,6 +135,12 @@ This is simple shinyapp for movie recommendation developed as part of Project 4 
 
 [Movie Users Dataset](users.dat)
 
+## Deployed App in Azure
+
+We deployed our app in Azure cloud platform which runs 2 CPU , 8Cores virtual machine which runs on CENTOS.
+
+ <a href="http://40.85.185.52:3838/cs598-psl-project4/">View Demo</a>
+ 
 <!-- CONTACT -->
 ## Contact
 
