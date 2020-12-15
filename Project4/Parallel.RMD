@@ -259,3 +259,9 @@ IBCF_RMSE
 stopImplicitCluster()
 ```
 
+```{r}
+results = data.frame("System I: Avg Popular" = popular_rmses, "System I: Hybrid" = hybrid_rmses, "System II: UBCF"= ucbf_rmses, "System II: IBCF"= icbf_rmses)
+
+kable(results)
+```
+
