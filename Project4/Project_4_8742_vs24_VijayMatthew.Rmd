@@ -761,11 +761,11 @@ IBCF_RMSE
 
 ## Summary
 
-Since one full run takes about 1 hour on a MSI Intel i7 16G memory laptop on the full dataset of ratings, we speed up the processing of this markdown document by running a reduced dataset (10% of full dataset) on this session. 
+Since one full run takes about 1 hour on a MSI Intel i7 16G memory laptop on the full dataset of ratings, we speed up the processing of this markdown document by running a reduced dataset (10% of full dataset) evaluation only once in this file.
 
-We manually distibuted the run of 10 iterations in separate machines to speed up processing and collect results in the following full dataset result table below.
+We added another markdown file: Parallel.RMD which evaluates each model 10 iterations on full dataset using parallel and foreach package to speed up the process. 
 
-From the following table of prediction speed and lowest RMSE, System I Average Popular model stands out.
+From the following table of prediction speed and lowest RMSE on both reduced dataset and full dataset, System I Average Popular model stands out.
 
 
 ### Reduced dataset (10% of full - dataset 100000 ratings)
@@ -812,11 +812,11 @@ Average RMSE of the 10 iterations of full dataset:
 kable(data.frame(SystemI_Avg_Popular=mean(full_avg_popular), SystemI_Hybrid=mean(full_hybrid), SystemII_UBCF=mean(full_ubcf), SystemII_IBCF=mean(full_ibcf)))
 ```
 
-Running time of 1 iterations for full dataset:
+Running time of 10 iterations using parallel and foreach package for full dataset:
 
 ```{r echo=FALSE}
 
-kable(data.frame(SystemI_Avg_Popular="3.057058 secs", SystemI_Hybrid="30.12208 mins", SystemII_UBCF="19.01733 mins", SystemII_IBCF="6.242121 secs"))
+kable(data.frame(SystemI_Avg_Popular="334.793 secs (~6min)", SystemI_Hybrid="13856.588 secs (~4hrs)", SystemII_UBCF="6924.217 secs (~2hrs)", SystemII_IBCF="798.802 secs (~13min)"))
 
 ```
 
